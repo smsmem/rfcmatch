@@ -1,0 +1,610 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>RFC Fight Harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+body{margin:0}
+/* Layout: one phone-width column — HUD, 16:9 fight stage, ticket strip, pick dock pinned at the bottom. Test drawer slides over from the right. Single dark "arena" look by choice. */
+:root{
+  --bg:#0a0c11; --panel:#131722; --panel2:#1a1f2d; --line:#283044; --fg:#eef1f6; --muted:#8b94a8;
+  --neon:#ff3d8b; --a:#5ec8ff; --b:#ffb020; --win:#3ddc84; --loss:#ff5a5a;
+  --f-display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --f-body:"Barlow","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;overflow:hidden}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+#app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);position:relative}
+.hud{display:flex;align-items:center;gap:12px;padding:10px 16px}
+.brand{font-family:var(--f-display);font-weight:900;font-size:26px;letter-spacing:.04em;line-height:1}
+.brand span{color:var(--neon)}
+.hud .spacer{flex:1}
+.bal{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.bal small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.bal b{font-family:var(--f-mono);font-size:16px}
+.iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer}
+.iconbtn svg{width:18px;height:18px;fill:none;stroke:var(--fg);stroke-width:1.8}
+
+.stage{position:relative;width:100%;aspect-ratio:16/9;max-width:100%;background:#000;overflow:hidden}
+.stage video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:16px;background:radial-gradient(ellipse at center,#1b2030 0%,#07080c 70%)}
+.ph b{font-family:var(--f-display);font-size:28px;letter-spacing:.04em;text-transform:uppercase}
+.ph p{color:var(--muted);margin:.4em 0 0;font-size:13px}
+.tag{position:absolute;top:10px;left:10px;display:flex;gap:6px;align-items:center}
+.pill{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;padding:4px 8px;border-radius:999px;background:rgba(10,12,17,.72);border:1px solid var(--line)}
+.pill.live{border-color:var(--neon);color:var(--neon)}
+.pill.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--neon);margin-right:6px;vertical-align:1px;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.clock{position:absolute;top:10px;right:10px;font-family:var(--f-mono);font-size:12px;background:rgba(10,12,17,.72);padding:4px 8px;border-radius:6px;border:1px solid var(--line)}
+.purse{position:absolute;left:10px;right:10px;bottom:10px;display:flex;align-items:center;gap:8px}
+.purse label{font-family:var(--f-display);font-weight:900;font-size:15px;letter-spacing:.08em;text-shadow:0 1px 3px #000}
+.purse .bar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.purse .fill{height:100%;width:0;background:linear-gradient(90deg,var(--b),var(--neon));transition:width .25s linear}
+.purse .ptier{font-size:11px;color:#fff;text-shadow:0 1px 3px #000;min-width:74px;text-align:right}
+.banner{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;pointer-events:none}
+.banner b{display:inline-block;font-family:var(--f-display);font-weight:900;font-size:clamp(28px,9vw,48px);letter-spacing:.04em;text-transform:uppercase;padding:4px 16px;background:rgba(10,12,17,.78);border-top:2px solid var(--neon);border-bottom:2px solid var(--neon)}
+.banner small{display:block;margin-top:6px;font-size:12px;color:#fff;text-shadow:0 1px 3px #000}
+
+.mid{flex:1;display:flex;flex-direction:column;justify-content:center;min-height:0}
+.card{display:flex;align-items:baseline;justify-content:center;gap:12px;padding:8px 16px 12px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.card b{font-size:clamp(28px,9vw,44px);line-height:1}
+.card b:first-child{color:var(--a)} .card b:last-child{color:var(--b)}
+.card span{font-size:16px;color:var(--muted)}
+.ticket{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;min-height:52px;scrollbar-width:none}
+.ticket::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.25;white-space:nowrap}
+.chip .s{font-weight:700}
+.chip.A{border-left:3px solid var(--a)} .chip.B{border-left:3px solid var(--b)}
+.chip em{font-style:normal;color:var(--muted)}
+.chip.empty{color:var(--muted);border-style:dashed}
+
+.dock{padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--panel) 18%);display:flex;flex-direction:column;gap:10px}
+.status{display:flex;align-items:baseline;gap:8px;font-size:12px}
+.status .w{font-family:var(--f-display);font-weight:900;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
+.status .t{margin-left:auto;font-family:var(--f-mono);font-size:18px}
+.status .next{color:var(--muted);font-size:11px}
+.cd{height:4px;border-radius:99px;background:var(--line);overflow:hidden}
+.cd i{display:block;height:100%;width:100%;background:var(--neon);transform-origin:left;transition:transform .2s linear}
+
+.bonus{border:1px solid var(--neon);border-radius:14px;padding:12px;background:var(--panel2);display:flex;flex-direction:column;gap:10px;animation:pop .22s ease-out}
+@keyframes pop{from{transform:translateY(12px);opacity:0}}
+.bonus .add{display:flex;align-items:baseline;gap:8px}
+.bonus .add b{font-family:var(--f-mono);font-size:22px;color:var(--win)}
+.bonus .add span{font-size:13px}
+.bonus .add em{margin-left:auto;font-style:normal;font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.bonus .q{font-size:13px;color:var(--muted)}
+.bonus .q b{color:var(--fg);font-family:var(--f-mono);font-size:15px}
+.hl{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hl button{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:10px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.hl button b{font-family:var(--f-display);font-weight:900;font-size:24px;letter-spacing:.06em;text-transform:uppercase;line-height:1}
+.hl button small{font-family:var(--f-mono);font-size:12px;color:var(--win)}
+.hl button:hover{border-color:var(--neon)}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px}
+.opt{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px;cursor:pointer;text-align:center;line-height:1.2}
+.opt b{display:block;font-family:var(--f-mono);font-size:12px}
+.opt small{color:var(--win);font-family:var(--f-mono);font-size:11px}
+.opt:hover{border-color:var(--neon)}
+
+.slider{position:relative;height:84px;border-radius:16px;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 14px;user-select:none;touch-action:none;overflow:hidden}
+.slider .end{display:flex;flex-direction:column;line-height:1.05;z-index:1;pointer-events:none;transition:transform .15s}
+.slider .end.r{align-items:flex-end;text-align:right}
+.slider .end small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.slider .end b{font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.slider .end .m{font-family:var(--f-mono);font-size:16px;font-weight:700}
+.slider .end.l .m{color:var(--a)} .slider .end.r .m{color:var(--b)}
+.slider .end.hot{transform:scale(1.08)}
+.glowL,.glowR{position:absolute;top:0;bottom:0;width:50%;opacity:0;transition:opacity .1s;pointer-events:none}
+.glowL{left:0;background:linear-gradient(90deg,rgba(94,200,255,.35),transparent)}
+.glowR{right:0;background:linear-gradient(270deg,rgba(255,176,32,.35),transparent)}
+.knob{position:absolute;left:50%;top:50%;width:76px;height:64px;margin:-32px 0 0 -38px;border-radius:14px;background:var(--fg);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;box-shadow:0 6px 18px rgba(0,0,0,.45);z-index:2;touch-action:none;transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.knob.drag{transition:none;cursor:grabbing}
+.knob .amt{font-family:var(--f-mono);font-weight:700;font-size:20px;line-height:1}
+.knob .u{font-size:9px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:.7}
+.knob .ar{font-size:9px;line-height:1;opacity:.55}
+.slider.off{opacity:.45}
+.slider.off .knob{cursor:not-allowed}
+.hint{font-size:11px;color:var(--muted);text-align:center}
+.primary{border:0;border-radius:12px;background:var(--neon);color:#fff;font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.08em;text-transform:uppercase;padding:12px;cursor:pointer}
+.primary:disabled{opacity:.4;cursor:default}
+.legal{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.02em}
+
+/* Result sheet */
+.result{position:absolute;left:0;right:0;bottom:0;max-height:64%;border-top:2px solid var(--neon);border-radius:18px 18px 0 0;background:rgba(14,17,25,.97);padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;backdrop-filter:blur(4px);display:flex;flex-direction:column;padding:16px;gap:12px;overflow-y:auto;z-index:20}
+.result h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:40px;letter-spacing:.03em;text-transform:uppercase;line-height:1;text-wrap:balance}
+.result .sub{color:var(--muted);margin-top:-6px}
+.rrow{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
+.rrow .num{white-space:nowrap}
+.win{color:var(--win)} .lose{color:var(--loss)} .mut{color:var(--muted)}
+.reveal{border:1px solid var(--neon);border-radius:12px;padding:12px;text-align:center}
+.reveal small{letter-spacing:.16em;text-transform:uppercase;font-size:10px;color:var(--muted)}
+.reveal b{display:block;font-family:var(--f-mono);font-size:36px}
+.step{display:flex;flex-direction:column;gap:6px;animation:pop .3s ease-out}
+.big{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--f-display);font-weight:900;font-size:24px;text-transform:uppercase;letter-spacing:.04em}
+.big .num{font-family:var(--f-mono);font-size:22px}
+.total{display:flex;justify-content:space-between;font-family:var(--f-display);font-weight:900;font-size:26px;text-transform:uppercase;letter-spacing:.04em}
+
+/* Test drawer */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:50;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s}
+.drawer.open{transform:none}
+.drawer header{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px;border-bottom:1px solid var(--line)}
+.drawer header b{font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.05em;text-transform:uppercase}
+.tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:transparent;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:12px}
+.tabs button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pane{flex:1;overflow-y:auto;padding:12px 16px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.pane h3{margin:6px 0 0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld span{font-size:11px;color:var(--muted)}
+.fld input,.fld select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 8px;color:var(--fg);font-family:var(--f-mono);font-size:12px;width:100%;min-width:0}
+textarea{min-height:120px;resize:vertical}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%;font-size:12px}
+.tbl th,.tbl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.btn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px}
+.btn.hot{border-color:var(--neon);color:var(--neon)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.clip{border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:end}
+.clip .full{grid-column:1/-1;display:flex;gap:6px;align-items:center}
+.clip .full b{font-size:12px}
+.clip .full .btn{margin-left:auto;padding:4px 8px}
+.note{font-size:12px;color:var(--muted);line-height:1.45}
+.ok{color:var(--win)} .bad{color:var(--loss)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app">
+  <div class="hud">
+    <div class="brand">R<span>F</span>C</div>
+    <div class="spacer"></div>
+    <div class="bal"><small>Coins</small><b id="bal" class="num">1,000</b></div>
+    <button class="iconbtn" id="openDrawer" aria-label="Open test settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </div>
+
+  <div class="mid">
+  <div class="card"><b id="cA">Viking</b><span>vs</span><b id="cB">Monk</b></div>
+  <div class="stage" id="stage">
+    <video id="vid" playsinline preload="auto" muted></video>
+    <div class="ph" id="ph" hidden><div><b id="phT">Clip needed</b><p id="phS"></p></div></div>
+    <div class="tag"><span class="pill" id="phase">Ready</span></div>
+    <div class="clock num" id="clock">0:00</div>
+    <div class="purse"><label>PURSE</label><div class="bar"><div class="fill" id="pfill"></div></div><div class="ptier" id="ptier">Opens at bell</div></div>
+    <div class="banner" id="banner" hidden><b id="banT"></b><small id="banS"></small></div>
+  </div>
+
+  <div class="result" id="result" hidden></div>
+
+  <div class="ticket" id="ticket"><div class="chip empty">Your picks show here</div></div>
+  </div>
+
+  <div class="dock">
+    <div class="status"><span class="w" id="stW">Pre-fight</span><span class="next" id="stN"></span><span class="t" id="stT">--</span></div>
+    <div class="cd"><i id="cdBar"></i></div>
+    <div class="bonus" id="pp" hidden>
+      <div class="add"><b id="bnAdd">+0.00</b><span>Coins automatically added to the bonus round</span><em id="ppT"></em></div>
+      <div class="q">Final Purse: higher or lower than <b id="bnLine">2,000</b>?</div>
+      <div class="hl" id="ppOpts"><button data-o="H"><b>Higher</b><small id="bnH">pays 0</small></button><button data-o="L"><b>Lower</b><small id="bnL">pays 0</small></button></div>
+    </div>
+    <div class="slider off" id="slider">
+      <div class="glowL" id="gL"></div><div class="glowR" id="gR"></div>
+      <div class="end l" id="endA"><small>Slide left</small><b id="nA">Viking</b><span class="m" id="mA">1.49x</span></div>
+      <div class="end r" id="endB"><small>Slide right</small><b id="nB">Monk</b><span class="m" id="mB">2.51x</span></div>
+      <div class="knob" id="knob" tabindex="0" role="slider" aria-label="Pick amount. Slide left or right to pick, push up or down to change the amount"><span class="ar">▲</span><span class="amt" id="amt">10</span><span class="u">Coins</span><span class="ar">▼</span></div>
+    </div>
+    <div class="hint" id="hint">Slide the knob to a fighter to pick · push it up or down to raise or lower the amount</div>
+    <button class="primary" id="startBtn">Start fight</button>
+    <div class="legal">Play with Coins · No purchase necessary · 18+ · Void where prohibited · Results decided by RNG at the start of each fight</div>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer" aria-label="Test settings">
+  <header><b>Test Bench</b><div class="spacer" style="flex:1"></div><button class="btn" id="closeDrawer">Close</button></header>
+  <div class="tabs" id="tabs">
+    <button data-t="math" class="on">Math</button><button data-t="fighters">Fighters</button><button data-t="clips">Clips</button><button data-t="stats">Stats & sim</button>
+  </div>
+  <div class="pane" id="pane-math"></div>
+  <div class="pane" id="pane-fighters" hidden></div>
+  <div class="pane" id="pane-clips" hidden></div>
+  <div class="pane" id="pane-stats" hidden></div>
+</aside>
+
+<script>
+(()=>{
+"use strict";
+/* ============ Defaults (from RFC_Math_Model_v1.xlsx) ============ */
+const VIDEO_FILE="Full-fight-viking-vs-monk-viking-wins-small.mp4";
+const DEF={
+  math:{rtp:.94,step:.01,cap:50,floor:1.05,scale:400,minWin:15,frac:1/3,lastRtp:.65,share:1,lo:1000,hi:3000,lineMin:.3,lineMax:.7,startCoins:1000},
+  fighters:{A:{name:"Viking",rating:1650,ko:.60,dec:.30,sub:.10},B:{name:"Monk",rating:1560,ko:.45,dec:.35,sub:.20}},
+  force:{winner:"rand",method:"rand"},
+  order:"original", fightSec:0, // 0 = use story clip length
+  sources:[{id:"s1",name:VIDEO_FILE,url:VIDEO_FILE}],
+  clips:[
+    {id:"c1",src:"s1",phase:"prelude",tag:"walkouts",side:"-",method:"any",start:0,end:14},
+    {id:"c2",src:"s1",phase:"prelude",tag:"stare-down",side:"-",method:"any",start:14,end:18},
+    {id:"c3",src:"s1",phase:"story",tag:"touch gloves + clinch",side:"-",method:"any",start:18,end:24.5},
+    {id:"c4",src:"s1",phase:"story",tag:"knockdown + get-up",side:"-",method:"any",start:24.5,end:30},
+    {id:"c5",src:"s1",phase:"story",tag:"exchange",side:"-",method:"any",start:30,end:36},
+    {id:"c6",src:"s1",phase:"story",tag:"reset + circling",side:"-",method:"any",start:36,end:46},
+    {id:"c7",src:"s1",phase:"story",tag:"pressure + cut",side:"-",method:"any",start:46,end:53.5},
+    {id:"c8",src:"s1",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:53.5,end:60},
+    {id:"c9",src:"s1",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:69}
+  ]
+};
+const AMTS=[1,2,5,10,25,50,100,250];
+const clone=o=>JSON.parse(JSON.stringify(o));
+const esc=v=>String(v).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch]);
+let C=clone(DEF);
+try{const s=localStorage.getItem("rfc-harness-v2");if(s){const p=JSON.parse(s);C={...C,...p,sources:DEF.sources.concat((p.sources||[]).filter(x=>x.id!=="s1"&&!String(x.url).startsWith("blob:")))};}}catch(e){}
+function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v2",JSON.stringify(o))}catch(e){}}
+
+/* ============ Math ============ */
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString();
+const f2=n=>(Math.round(n*100)/100).toFixed(2);
+const pct=n=>(n*100).toFixed(1)+"%";
+const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+function pA(){const M=C.math,a=C.fighters.A.rating,b=C.fighters.B.rating;return 1/(1+Math.pow(10,(b-a)/M.scale))}
+function flo(x,st){return Math.floor(x/st+1e-9)*st}
+function storyLen(){return C.clips.filter(c=>c.phase==="story").reduce((s,c)=>s+(c.end-c.start),0)}
+function fightT(){return C.fightSec>0?C.fightSec:(storyLen()||36)}
+// Window 1 = pre-fight (walkouts). Live windows split the fight: length = MAX(min sec, fight × fraction).
+function windows(T){const M=C.math;const len=Math.max(M.minWin,T*M.frac);const Nlive=Math.max(1,Math.floor(T/len+1e-4));return{len,Nlive,N:Nlive+1}}
+function winRtp(k,N){const M=C.math;return N===1?M.rtp:M.rtp-(M.rtp-M.lastRtp)*(k-1)/(N-1)}
+function mult(p,k,N){const M=C.math;if(k===1)return Math.min(M.cap,flo(M.rtp/p,M.step));return Math.min(M.cap,Math.max(M.floor,flo(winRtp(k,N)/p,M.step)))}
+// Bonus: higher/lower than a line. Final Purse is uniform in [lo,hi], so P(higher) = (hi-line)/(hi-lo).
+function newLine(){const M=C.math,u=M.lineMin+Math.random()*(M.lineMax-M.lineMin);return Math.round((M.lo+u*(M.hi-M.lo))/10)*10}
+function pHigher(L){const M=C.math;return (M.hi-L)/(M.hi-M.lo)}
+function bonusPays(gap,L){const ph=pHigher(L);return{H:gap/ph,L:gap/(1-ph)}}
+
+/* ============ Round state ============ */
+let bal=C.math.startCoins, amtIdx=3;
+const stats={rounds:0,in:0,fight:0,purse:0,byW:{}};
+let R=null; // current round
+const vid=$("vid");
+
+function drawResult(){
+  const p=pA();let w;
+  if(C.force.winner==="A")w="A";else if(C.force.winner==="B")w="B";else w=Math.random()<p?"A":"B";
+  const F=C.fighters[w];let m;
+  if(C.force.method!=="rand")m=C.force.method;else{const r=Math.random();m=r<F.ko?"KO":r<F.ko+F.dec?"DEC":"SUB"}
+  return{w,m};
+}
+function pickClip(phase,side,method){
+  let pool=C.clips.filter(c=>c.phase===phase&&(side==null||c.side===side||c.side==="-"));
+  if(method){const exact=pool.filter(c=>c.method===method);if(exact.length)pool=exact;else pool=pool.filter(c=>c.method==="any"||!c.method)}
+  if(side){const s=pool.filter(c=>c.side===side);if(s.length)pool=s}
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+}
+function buildPlaylist(res,T){
+  const pl=[];
+  // Prelude: in library order (walkouts then stare-down)
+  C.clips.filter(c=>c.phase==="prelude").forEach(c=>pl.push({phase:"prelude",clip:c,dur:c.end-c.start,label:c.tag}));
+  if(!pl.length)pl.push({phase:"prelude",clip:null,dur:4,label:"Walkouts",ph:["Walkouts","No prelude clip in library"]});
+  // Story: drawn with no knowledge of the result
+  let story=C.clips.filter(c=>c.phase==="story");
+  if(C.order==="shuffle")story=story.slice().sort(()=>Math.random()-.5);
+  let left=T,i=0,guard=0;
+  if(!story.length){pl.push({phase:"live",clip:null,dur:T,label:"Fight",ph:["Fight in progress","No story clips — timer only"]});}
+  else while(left>0.05&&guard++<200){const c=story[i%story.length];const d=Math.min(c.end-c.start,left);pl.push({phase:"live",clip:c,dur:d,label:c.tag});left-=d;i++;if(C.order==="shuffle"&&i%story.length===0)story.sort(()=>Math.random()-.5)}
+  // Finish + outcome: only these know the winner
+  const W=C.fighters[res.w].name, mName={KO:"KO/TKO",DEC:"Decision",SUB:"Submission"}[res.m];
+  const fc=pickClip("finish",res.w,res.m);
+  pl.push(fc?{phase:"finish",clip:fc,dur:fc.end-fc.start,label:fc.tag}:{phase:"finish",clip:null,dur:3.5,label:"Finish",ph:[W+" by "+mName,"Finish clip for "+W+" not in the library yet"]});
+  const oc=pickClip("outcome",res.w,null);
+  pl.push(oc?{phase:"outcome",clip:oc,dur:oc.end-oc.start,label:oc.tag}:{phase:"outcome",clip:null,dur:3,label:"Outcome",ph:[W+" wins","Hand-raise clip for "+W+" not in the library yet"]});
+  return pl;
+}
+function newRound(){
+  const T=fightT(),{len,N,Nlive}=windows(T),res=drawResult();
+  const pl=buildPlaylist(res,T);
+  const pre=pl.filter(x=>x.phase==="prelude").reduce((s,x)=>s+x.dur,0);
+  const knots=[0];for(let i=0;i<6;i++)knots.push(Math.random());knots.sort();
+  R={T,len,N,Nlive,res,pl,pre,idx:-1,done:0,itemT:0,wall:0,seeking:false,purse:C.math.lo+Math.random()*(C.math.hi-C.math.lo),
+     picks:[],pending:null,knots,resultShown:false,p:pA()};
+  $("result").hidden=true;renderTicket();
+}
+
+/* ============ Playback ============ */
+const srcUrl=id=>{const s=C.sources.find(x=>x.id===id);return s?s.url:""};
+function playItem(i){
+  R.idx=i;R.itemT=0;const it=R.pl[i];
+  if(!it){return}
+  $("phase").textContent=({prelude:"Walkouts",live:"Live",finish:"Finish",outcome:"Result"})[it.phase];
+  $("phase").className="pill"+(it.phase==="live"?" live":"");
+  if(it.phase==="finish")banner("Picks closed","Finish sequence");
+  if(it.clip&&vid.error&&vid.dataset.src===srcUrl(it.clip.src)){it.clip=null;it.ph=["Video not found","Add the fight video under Test Bench → Clips, or keep "+VIDEO_FILE+" next to this page"]}
+  if(it.clip){
+    $("ph").hidden=true;const url=srcUrl(it.clip.src);
+    const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>0.3){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}vid.play().catch(()=>{})};
+    if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url;vid.addEventListener("loadedmetadata",go,{once:true});vid.load()}else go();
+  }else{
+    vid.pause();$("ph").hidden=false;$("phT").textContent=it.ph[0];$("phS").textContent=it.ph[1];R.wall=performance.now();
+  }
+}
+vid.addEventListener("seeked",()=>{if(R)R.seeking=false});
+vid.addEventListener("error",()=>{if(!R||R.idx<0)return;const it=R.pl[R.idx];if(it&&it.clip){it.clip=null;it.ph=["Video not found","Add the fight video under Test Bench → Clips, or keep "+VIDEO_FILE+" next to this page"];playItem(R.idx)}});
+
+function tick(){
+  requestAnimationFrame(tick);
+  if(!R||R.idx<0||R.idx>=R.pl.length){renderDock();return}
+  const it=R.pl[R.idx];
+  if(it.clip&&R.seeking&&performance.now()-R.seekAt>2000)R.seeking=false;
+  if(it.clip){if(!R.seeking)R.itemT=Math.max(0,Math.min(it.dur,vid.currentTime-it.clip.start))}
+  else R.itemT=(performance.now()-R.wall)/1000;
+  const g=R.done+R.itemT;R.g=g;
+  if(it.phase==="outcome"&&R.itemT>1.2&&!R.resultShown)showResult();
+  if(R.itemT>=it.dur-0.04||(it.clip&&vid.ended)){R.done+=it.dur;if(R.idx+1<R.pl.length)playItem(R.idx+1);else{R.idx=R.pl.length;vid.pause();if(!R.resultShown)showResult()}}
+  renderStage();renderDock();
+}
+function winState(){
+  if(!R||R.idx<0)return{k:0,open:false};
+  const g=R.g||0,live=g-R.pre,endAll=R.Nlive*R.len;
+  if(R.idx>=R.pl.length||["finish","outcome"].includes((R.pl[R.idx]||{}).phase))return{k:0,open:false,closed:true};
+  if(live<0)return{k:1,open:true,left:R.pre-g,total:R.pre};
+  if(live<endAll){const j=Math.floor(live/R.len)+1;return{k:j+1,open:true,left:j*R.len-live,total:R.len}}
+  return{k:0,open:false,closed:true,toFinish:R.T-live};
+}
+
+/* ============ Rendering ============ */
+function renderStage(){
+  const g=R.g||0,live=g-R.pre;
+  $("clock").textContent=live<0?"Bell in "+mmss(-live):mmss(Math.min(live,R.T))+" / "+mmss(R.T);
+  // Purse meter: random pace, never tied to the final number
+  const prog=Math.max(0,Math.min(1,g/(R.pre+R.T)));const kn=R.knots;const seg=Math.min(5,Math.floor(prog*6));
+  const fill=R.resultShown?1:0.08+0.8*(kn[seg]+(kn[seg+1]-kn[seg])*(prog*6-seg));
+  $("pfill").style.width=(fill*100).toFixed(1)+"%";
+  $("ptier").textContent=R.resultShown?"Revealed":fill<.35?"Building":fill<.65?"Heating up":"Big night";
+}
+let lastDockKey="";
+function renderDock(){
+  const ws=winState(),p=R?R.p:pA(),N=R?R.N:windows(fightT()).N,T=R?R.T:fightT(),len=R?R.len:windows(fightT()).len;
+  const k=ws.open?ws.k:(R&&R.idx>=0?0:1);
+  const mA=k?mult(p,k,N):null,mB=k?mult(1-p,k,N):null;
+  $("nA").textContent=$("cA").textContent=C.fighters.A.name;$("nB").textContent=$("cB").textContent=C.fighters.B.name;
+  $("mA").textContent=mA?f2(mA)+"x":"—";$("mB").textContent=mB?f2(mB)+"x":"—";
+  $("amt").textContent=AMTS[amtIdx];
+  const sl=$("slider");const canPick=!!(R&&ws.open&&!R.pending);
+  sl.classList.toggle("off",!canPick);
+  if(!R||R.idx<0){$("stW").textContent="Pre-fight";$("stN").textContent="then "+(N-1)+" live windows × "+mmss(len)+" · fight "+mmss(T);$("stT").textContent="";$("cdBar").style.transform="scaleX(1)";return}
+  if(ws.open){
+    $("stW").textContent=ws.k===1?"Pre-fight pick":"Live "+(ws.k-1)+" of "+(N-1);
+    const nk=ws.k+1;$("stN").textContent=nk<=N?"Next: "+f2(mult(p,nk,N))+"x / "+f2(mult(1-p,nk,N))+"x":"Last window";
+    $("stT").textContent=mmss(ws.left);$("cdBar").style.transform="scaleX("+Math.max(0,ws.left/ws.total).toFixed(3)+")";
+  }else{
+    $("stW").textContent=R.resultShown?"Fight over":"Picks closed";$("stN").textContent=ws.toFinish>0?"Finish in "+mmss(ws.toFinish):"";$("stT").textContent="";$("cdBar").style.transform="scaleX(0)";
+  }
+  // Auto-assign an unanswered Purse pick when its window closes
+  if(R.pending&&(!ws.open||ws.k!==R.pending.k)){choosePurse(Math.random()<.5?"H":"L",true)}
+  if(R.pending){$("ppT").textContent="closes "+mmss(ws.left||0)}
+}
+function renderTicket(){
+  const el=$("ticket");
+  if(!R||!R.picks.length){el.innerHTML='<div class="chip empty">Your picks show here</div>';return}
+  el.innerHTML=R.picks.map(pk=>{const F=C.fighters[pk.side];const pr=pk.opt?'<br><em>Bonus '+f2(pk.gap)+' · '+(pk.opt==="H"?"Higher":"Lower")+' than '+fmt(pk.line)+(pk.auto?' (auto)':'')+'</em>':(pk.k>1?'<br><em>Bonus: choose higher or lower</em>':'');
+    return '<div class="chip '+pk.side+'"><span class="s">'+wName(pk.k)+' '+F.name+'</span> <span class="num">'+pk.coins+' @ '+f2(pk.m)+'x</span>'+pr+'</div>'}).join("");
+  el.scrollLeft=el.scrollWidth;
+}
+function banner(t,s){$("banT").textContent=t;$("banS").textContent=s||"";$("banner").hidden=false;clearTimeout(banner.tm);banner.tm=setTimeout(()=>$("banner").hidden=true,1600)}
+function wName(k){return k===1?"Pre":"Live "+(k-1)}
+function renderBal(){$("bal").textContent=fmt(bal)}
+
+/* ============ Picks ============ */
+function commit(side){
+  const ws=winState();if(!R||!ws.open||R.pending)return;
+  const coins=AMTS[amtIdx];if(coins>bal){banner("Not enough Coins","");return}
+  const p=side==="A"?R.p:1-R.p,m=mult(p,ws.k,R.N);
+  const gap=Math.max(0,coins*C.math.rtp-coins*p*m)*C.math.share;
+  const pk={k:ws.k,side,coins,m,p,gap};
+  bal-=coins;R.picks.push(pk);renderBal();renderTicket();
+  banner(C.fighters[side].name+" "+f2(m)+"x",coins+" Coins locked");
+  if(ws.k>=2)openPurse(pk);
+}
+function openPurse(pk){
+  pk.line=newLine();pk.pays=bonusPays(pk.gap,pk.line);R.pending=pk;
+  $("bnAdd").textContent="+"+f2(pk.gap);$("bnLine").textContent=fmt(pk.line);
+  $("bnH").textContent="pays "+f2(pk.pays.H);$("bnL").textContent="pays "+f2(pk.pays.L);
+  $("pp").hidden=false;
+}
+$("ppOpts").addEventListener("click",e=>{const b=e.target.closest("button");if(b)choosePurse(b.dataset.o,false)});
+function choosePurse(o,auto){const pk=R.pending;if(!pk)return;pk.opt=o;pk.auto=auto;pk.full=pk.pays[o];R.pending=null;$("pp").hidden=true;renderTicket()}
+
+/* ============ Result ============ */
+function showResult(){
+  if(R.resultShown)return;R.resultShown=true;const me=R;
+  if(R.pending)choosePurse(Math.random()<.5?"H":"L",true);
+  const w=R.res.w,W=C.fighters[w].name,mName={KO:"KO/TKO",DEC:"Decision",SUB:"Submission"}[R.res.m];
+  let fight=0,purse=0,inC=0;const fr=[],br=[];
+  R.picks.forEach(pk=>{
+    inC+=pk.coins;const won=pk.side===w,pay=won?pk.coins*pk.m:0;fight+=pay;
+    fr.push('<div class="rrow"><span>'+wName(pk.k)+' · '+C.fighters[pk.side].name+' '+pk.coins+' @ '+f2(pk.m)+'x</span><span class="num '+(won?'win':'lose')+'">'+(won?'+'+f2(pay):'0.00')+'</span></div>');
+    let bp=0;
+    if(pk.opt){const hi=R.purse>pk.line,hit=(pk.opt==="H")===hi;bp=hit?pk.full:0;purse+=bp;
+      br.push('<div class="rrow"><span>'+f2(pk.gap)+' in bonus · '+(pk.opt==="H"?"Higher":"Lower")+' than '+fmt(pk.line)+(pk.auto?' (auto)':'')+'</span><span class="num '+(hit?'win':'lose')+'">'+(hit?'+'+f2(bp):'0.00')+'</span></div>')}
+    const b=stats.byW[pk.k]||(stats.byW[pk.k]={in:0,fight:0,purse:0});b.in+=pk.coins;b.fight+=pay;b.purse+=bp;
+  });
+  stats.rounds++;stats.in+=inC;stats.fight+=fight;stats.purse+=purse;
+  const el=$("result");
+  // Step 1: the knockout result and fight winnings
+  el.innerHTML='<div class="step"><h2>'+W+' wins</h2><div class="sub">by '+mName+'</div>'+
+    (fr.length?fr.join(""):'<div class="rrow mut"><span>No picks this fight</span><span></span></div>')+
+    '<div class="big"><span>Fight winnings</span><span class="num win">+'+f2(fight)+'</span></div></div><div id="st2"></div><div id="st3"></div>';
+  el.hidden=false;bal+=fight;renderBal();
+  // Step 2: Purse reveal
+  setTimeout(()=>{if(R!==me)return;
+    $("st2").innerHTML='<div class="step reveal"><small>Final Purse</small><b id="pnum">'+fmt(C.math.lo)+'</b></div>';
+    const t0=performance.now(),from=C.math.lo,to=me.purse;
+    (function up(){const k=Math.min(1,(performance.now()-t0)/1500);const e=1-Math.pow(1-k,3);const n=$("pnum");if(n)n.textContent=fmt(from+(to-from)*e);if(k<1)requestAnimationFrame(up)})();
+    el.scrollTop=el.scrollHeight;
+  },2200);
+  // Step 3: bonus results and extra Coins made
+  setTimeout(()=>{if(R!==me)return;
+    $("st3").innerHTML='<div class="step">'+(br.length?br.join(""):'<div class="rrow mut"><span>No bonus picks (live picks add to the bonus)</span><span></span></div>')+
+      '<div class="big"><span>Extra Coins made</span><span class="num '+(purse>0?'win':'mut')+'">+'+f2(purse)+'</span></div>'+
+      '<div class="total"><span>Total</span><span class="num">'+f2(fight+purse)+' / '+inC+'</span></div>'+
+      '<button class="primary" id="again">Next fight</button></div>';
+    bal+=purse;renderBal();$("again").onclick=()=>{startRound()};el.scrollTop=el.scrollHeight;renderStats();
+  },4200);
+}
+
+/* ============ Slider (Konjo style) ============ */
+(function(){
+  const kn=$("knob"),sl=$("slider");let st=null;
+  const maxX=()=>sl.clientWidth/2-46;
+  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0};kn.setPointerCapture(e.pointerId);kn.classList.add("drag")});
+  kn.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
+    if(!st.mode){if(Math.abs(dy)>5&&Math.abs(dy)>Math.abs(dx)){st.mode="amt";st.armed=true}
+      else if(Math.abs(dx)>10)st.mode="side"}
+    st.dy=dy;
+    if(st.mode==="side"){if(sl.classList.contains("off"))return;const x=Math.max(-maxX(),Math.min(maxX(),dx));kn.style.transform="translateX("+x+"px)";const r=x/maxX();
+      $("gL").style.opacity=r<0?Math.min(1,-r):0;$("gR").style.opacity=r>0?Math.min(1,r):0;$("endA").classList.toggle("hot",r<-.65);$("endB").classList.toggle("hot",r>.65)}
+    if(st.mode==="amt"){
+      // One slight push = one step. Holding the push repeats slowly. Let it come back to centre to push again.
+      if(st.armed&&Math.abs(dy)>5){st.armed=false;const dir=dy<0?1:-1;step(dir);clearTimeout(st.hold);clearInterval(st.rep);
+        st.hold=setTimeout(()=>{st&&(st.rep=setInterval(()=>{if(st&&Math.abs(st.dy)>5)step(st.dy<0?1:-1)},380))},600)}
+      if(!st.armed&&Math.abs(dy)<=3){st.armed=true;clearTimeout(st.hold);clearInterval(st.rep)}
+      kn.style.transform="translateY("+Math.max(-12,Math.min(12,dy/2))+"px)"}
+  });
+  const end=e=>{if(!st)return;clearInterval(st.rep);clearTimeout(st.hold);const dx=e.clientX-st.x;kn.classList.remove("drag");
+    if(st.mode==="side"&&Math.abs(dx)>maxX()*.65)commit(dx<0?"A":"B");
+    st=null;kn.style.transform="";$("gL").style.opacity=0;$("gR").style.opacity=0;$("endA").classList.remove("hot");$("endB").classList.remove("hot")};
+  kn.addEventListener("pointerup",end);kn.addEventListener("pointercancel",end);
+  kn.addEventListener("keydown",e=>{if(e.key==="ArrowUp"){step(1);e.preventDefault()}else if(e.key==="ArrowDown"){step(-1);e.preventDefault()}else if(e.key==="ArrowLeft"){commit("A");e.preventDefault()}else if(e.key==="ArrowRight"){commit("B");e.preventDefault()}});
+  sl.addEventListener("wheel",e=>{e.preventDefault();step(e.deltaY<0?1:-1)},{passive:false});
+  function step(d){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];if(was!==amtIdx&&navigator.vibrate){try{navigator.vibrate(8)}catch(e){}}}
+})();
+
+/* ============ Start ============ */
+function startRound(){
+  newRound();vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
+}
+$("startBtn").onclick=startRound;
+
+/* ============ Test Bench ============ */
+$("openDrawer").onclick=()=>{$("drawer").classList.add("open");renderAllPanes()};
+$("closeDrawer").onclick=()=>$("drawer").classList.remove("open");
+$("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;[...$("tabs").children].forEach(x=>x.classList.toggle("on",x===b));["math","fighters","clips","stats"].forEach(t=>$("pane-"+t).hidden=t!==b.dataset.t)});
+function fld(label,val,attrs){return '<label class="fld"><span>'+label+'</span><input '+attrs+' value="'+esc(val)+'"></label>'}
+function renderAllPanes(){renderMath();renderFighters();renderClips();renderStats()}
+function renderMath(){
+  const M=C.math,T=fightT(),{len,N,Nlive}=windows(T),p=pA();
+  const rows=[];for(let k=1;k<=N;k++){const ma=mult(p,k,N),mb=mult(1-p,k,N);rows.push('<tr><td>'+(k===1?'Pre-fight':'Live '+(k-1)+' '+mmss((k-2)*len)+'–'+mmss((k-1)*len))+'</td><td>'+pct(k===1?M.rtp:winRtp(k,N))+'</td><td>'+f2(ma)+'x</td><td>'+f2(mb)+'x</td><td>'+pct(p*ma)+'</td><td>'+pct((1-p)*mb)+'</td></tr>')}
+  const maxP=M.rtp/M.floor,okP=Math.max(p,1-p)<=maxP;
+  $("pane-math").innerHTML=
+   '<h3>Core</h3><div class="grid2">'+
+   fld("Target RTP",M.rtp,'data-m="rtp" type="number" step="0.01"')+fld("Rounding step",M.step,'data-m="step" type="number" step="0.01"')+
+   fld("Multiplier cap",M.cap,'data-m="cap" type="number"')+fld("Live floor",M.floor,'data-m="floor" type="number" step="0.01"')+
+   fld("Rating scale",M.scale,'data-m="scale" type="number"')+fld("Last-window RTP",M.lastRtp,'data-m="lastRtp" type="number" step="0.01"')+'</div>'+
+   '<h3>Timing</h3><div class="grid2">'+
+   fld("Min window (sec)",M.minWin,'data-m="minWin" type="number"')+fld("Window fraction",f2(M.frac),'data-m="frac" type="number" step="0.01"')+
+   fld("Fight time (sec, 0 = story clips)",C.fightSec,'data-c="fightSec" type="number"')+
+   '<label class="fld"><span>Story order</span><select data-c="order"><option value="original"'+(C.order==="original"?" selected":"")+'>Library order</option><option value="shuffle"'+(C.order==="shuffle"?" selected":"")+'>Shuffle events</option></select></label></div>'+
+   '<h3>Purse</h3><div class="grid2">'+
+   fld("Span low",M.lo,'data-m="lo" type="number"')+fld("Span high",M.hi,'data-m="hi" type="number"')+
+   fld("Line from (share of span)",M.lineMin,'data-m="lineMin" type="number" step="0.05"')+fld("Line to (share of span)",M.lineMax,'data-m="lineMax" type="number" step="0.05"')+
+   fld("Share of gap to bonus",M.share,'data-m="share" type="number" step="0.05"')+'</div>'+
+   '<div class="note">Each live pick adds its gap (RTP minus that window\'s return) to the bonus round. The player calls the final Purse higher or lower than a line; each side pays gap ÷ its chance, so the bonus returns the gap on average.</div>'+
+   '<h3>This fight: '+C.fighters.A.name+' '+pct(p)+' vs '+C.fighters.B.name+' '+pct(1-p)+'</h3>'+
+   '<div class="note">Pre-fight pick during the walkouts, then fight '+mmss(T)+' → '+Nlive+' live windows of '+mmss(len)+'. Picks close at '+mmss(Nlive*len)+' of the fight; the knockout plays after. '+(okP?'<span class="ok">Matchup is inside the floor limit ('+pct(maxP)+').</span>':'<span class="bad">A fighter is above '+pct(maxP)+' — the 1.05x floor would pay over RTP.</span>')+'</div>'+
+   '<div class="tbl"><table><tr><th>Window</th><th>RTP</th><th>'+C.fighters.A.name+'</th><th>'+C.fighters.B.name+'</th><th>A ret</th><th>B ret</th></tr>'+rows.join("")+'</table></div>'+
+   '<h3>Force result (testing only)</h3><div class="grid2">'+
+   '<label class="fld"><span>Winner</span><select data-f="winner"><option value="rand">RNG</option><option value="A">'+C.fighters.A.name+'</option><option value="B">'+C.fighters.B.name+'</option></select></label>'+
+   '<label class="fld"><span>Method</span><select data-f="method"><option value="rand">RNG</option><option value="KO">KO/TKO</option><option value="DEC">Decision</option><option value="SUB">Submission</option></select></label></div>'+
+   '<div class="row"><button class="btn" id="resetMath">Reset to sheet values</button><button class="btn" id="resetCoins">Reset Coins</button></div>';
+  $("pane-math").querySelector('[data-f="winner"]').value=C.force.winner;$("pane-math").querySelector('[data-f="method"]').value=C.force.method;
+  $("resetMath").onclick=()=>{C.math=clone(DEF.math);C.fightSec=0;C.order="original";save();renderMath();renderDock()};
+  $("resetCoins").onclick=()=>{bal=C.math.startCoins;renderBal()};
+}
+$("pane-math").addEventListener("change",e=>{const t=e.target;
+  if(t.dataset.m){C.math[t.dataset.m]=parseFloat(t.value)||0}
+  else if(t.dataset.c){C[t.dataset.c]=t.dataset.c==="fightSec"?(parseFloat(t.value)||0):t.value}
+  else if(t.dataset.f){C.force[t.dataset.f]=t.value}
+  save();renderMath();});
+function renderFighters(){
+  const p=pA();
+  $("pane-fighters").innerHTML=["A","B"].map(s=>{const F=C.fighters[s];return '<h3>'+(s==="A"?"Left":"Right")+' fighter · true win '+pct(s==="A"?p:1-p)+' · pays '+f2(mult(s==="A"?p:1-p,1,1))+'x</h3><div class="grid2">'+
+    fld("Name",F.name,'data-s="'+s+'" data-k="name" type="text"')+fld("Rating",F.rating,'data-s="'+s+'" data-k="rating" type="number"')+
+    fld("KO/TKO share",F.ko,'data-s="'+s+'" data-k="ko" type="number" step="0.05"')+fld("Decision share",F.dec,'data-s="'+s+'" data-k="dec" type="number" step="0.05"')+
+    fld("Submission share",F.sub,'data-s="'+s+'" data-k="sub" type="number" step="0.05"')+'<div class="fld"><span>Check</span><b class="'+(Math.abs(F.ko+F.dec+F.sub-1)<1e-6?"ok":"bad")+'">'+(Math.abs(F.ko+F.dec+F.sub-1)<1e-6?"Shares = 100%":"Shares must total 100%")+'</b></div></div>'}).join("")+
+    '<div class="note">Ratings come from the model sheet (Viking 1650, Monk 1560). Changes apply from the next fight.</div>';
+}
+$("pane-fighters").addEventListener("change",e=>{const t=e.target;if(!t.dataset.s)return;const F=C.fighters[t.dataset.s];F[t.dataset.k]=t.dataset.k==="name"?t.value:(parseFloat(t.value)||0);save();renderFighters();renderDock()});
+
+function renderClips(){
+  const srcOpts=C.sources.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join("");
+  const ph=["prelude","story","finish","outcome"];
+  $("pane-clips").innerHTML=
+   '<div class="note">Clip library: <b>Prelude</b> (walkouts, stare-down) → <b>Story</b> (random events, never tied to the result) → <b>Finish</b> and <b>Outcome</b> (tagged by winner side and method). Add more fight videos and mark clips to build variety. Videos you add stay only for this session; copy the library JSON to keep your clip map.</div>'+
+   '<div class="row"><label class="btn hot" for="addFiles">Add fight videos</label><input id="addFiles" type="file" accept="video/*" multiple hidden></div>'+
+   '<h3>Mark a clip</h3><div class="grid2"><label class="fld"><span>Video</span><select id="mkSrc">'+srcOpts+'</select></label>'+
+   '<label class="fld"><span>Phase</span><select id="mkPh">'+ph.map(x=>'<option>'+x+'</option>').join("")+'</select></label>'+
+   '<label class="fld"><span>Winner side</span><select id="mkSide"><option value="-">Either / neutral</option><option value="A">'+C.fighters.A.name+'</option><option value="B">'+C.fighters.B.name+'</option></select></label>'+
+   '<label class="fld"><span>Method</span><select id="mkM"><option value="any">Any</option><option value="KO">KO/TKO</option><option value="DEC">Decision</option><option value="SUB">Submission</option></select></label>'+
+   fld("Tag","",'id="mkTag" type="text" placeholder="e.g. body shot exchange"')+'<div></div>'+
+   fld("In (sec)","",'id="mkIn" type="number" step="0.1"')+fld("Out (sec)","",'id="mkOut" type="number" step="0.1"')+'</div>'+
+   '<div class="row"><button class="btn" id="mkPreview">Preview on stage</button><button class="btn" id="mkSetIn">Set In = now</button><button class="btn" id="mkSetOut">Set Out = now</button><button class="btn hot" id="mkAdd">Add clip</button></div>'+
+   '<h3>Library ('+C.clips.length+' clips)</h3>'+
+   C.clips.map((c,i)=>'<div class="clip"><div class="full"><b>'+c.phase.toUpperCase()+' · '+esc(c.tag)+'</b><span class="mut num">'+f2(c.end-c.start)+'s</span><button class="btn" data-play="'+i+'">Play</button><button class="btn" data-del="'+i+'">Remove</button></div>'+
+     '<label class="fld"><span>In</span><input data-ci="'+i+'" data-k="start" type="number" step="0.1" value="'+c.start+'"></label>'+
+     '<label class="fld"><span>Out</span><input data-ci="'+i+'" data-k="end" type="number" step="0.1" value="'+c.end+'"></label>'+
+     '<label class="fld"><span>Side / method</span><input data-ci="'+i+'" data-k="sm" type="text" value="'+c.side+' / '+c.method+'"></label></div>').join("")+
+   '<h3>Library JSON</h3><textarea id="libJson">'+JSON.stringify({clips:C.clips,sources:C.sources.map(s=>({id:s.id,name:s.name}))},null,1)+'</textarea>'+
+   '<div class="row"><button class="btn" id="copyLib">Copy JSON</button><button class="btn" id="loadLib">Load JSON above</button><button class="btn" id="resetLib">Reset to default clips</button></div><div class="note" id="libMsg"></div>';
+  const P=$("pane-clips");
+  $("addFiles").onchange=e=>{[...e.target.files].forEach(f=>{const id="s"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    const ex=C.sources.find(s=>s.name===f.name);if(ex){ex.url=URL.createObjectURL(f)}else C.sources.push({id,name:f.name,url:URL.createObjectURL(f)})});save();renderClips()};
+  const mk=()=>({src:$("mkSrc").value,phase:$("mkPh").value,side:$("mkSide").value,method:$("mkM").value,tag:$("mkTag").value||"clip",start:parseFloat($("mkIn").value),end:parseFloat($("mkOut").value)});
+  $("mkPreview").onclick=()=>{const url=srcUrl($("mkSrc").value);R=null;$("result").hidden=true;$("ph").hidden=true;if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url}vid.currentTime=parseFloat($("mkIn").value)||0;vid.muted=false;vid.controls=true;vid.play().catch(()=>{});$("startBtn").hidden=false};
+  $("mkSetIn").onclick=()=>{$("mkIn").value=vid.currentTime.toFixed(1)};
+  $("mkSetOut").onclick=()=>{$("mkOut").value=vid.currentTime.toFixed(1)};
+  $("mkAdd").onclick=()=>{const c=mk();if(!(c.end>c.start)){$("libMsg").textContent="Set an Out time after the In time.";return}c.id="c"+Date.now().toString(36);C.clips.push(c);save();renderClips();renderMath()};
+  P.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{C.clips.splice(+b.dataset.del,1);save();renderClips()});
+  P.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{const c=C.clips[+b.dataset.play];const url=srcUrl(c.src);R=null;$("result").hidden=true;$("ph").hidden=true;if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url}vid.currentTime=c.start;vid.muted=false;vid.play().catch(()=>{});const stop=()=>{if(vid.currentTime>=c.end){vid.pause();vid.removeEventListener("timeupdate",stop)}};vid.addEventListener("timeupdate",stop);$("startBtn").hidden=false});
+  P.querySelectorAll("[data-ci]").forEach(inp=>inp.onchange=()=>{const c=C.clips[+inp.dataset.ci];if(inp.dataset.k==="sm"){const[s,m]=inp.value.split("/").map(x=>x.trim());c.side=s||"-";c.method=m||"any"}else c[inp.dataset.k]=parseFloat(inp.value)||0;save()});
+  $("copyLib").onclick=()=>{const t=$("libJson");navigator.clipboard.writeText(t.value).then(()=>$("libMsg").textContent="Copied.",()=>{t.select();$("libMsg").textContent="Selected — press copy on your keyboard."})};
+  $("loadLib").onclick=()=>{try{const o=JSON.parse($("libJson").value);if(!Array.isArray(o.clips))throw 0;C.clips=o.clips;(o.sources||[]).forEach(s=>{if(!C.sources.find(x=>x.id===s.id))C.sources.push({id:s.id,name:s.name,url:s.name})});save();renderClips();$("libMsg").textContent="Loaded. Videos referenced by name must sit next to this page or be added again."}catch(e){$("libMsg").textContent="That JSON isn't a clip library. It needs a \"clips\" list."}};
+  $("resetLib").onclick=()=>{C.clips=clone(DEF.clips);C.sources=clone(DEF.sources);save();renderClips()};
+}
+function renderStats(){
+  if(!$("pane-stats"))return;
+  const r=(a,b)=>b?pct(a/b):"—";
+  const ws=Object.keys(stats.byW).sort().map(k=>{const b=stats.byW[k];return '<tr><td>'+wName(+k)+'</td><td>'+fmt(b.in)+'</td><td>'+r(b.fight,b.in)+'</td><td>'+r(b.purse,b.in)+'</td><td>'+r(b.fight+b.purse,b.in)+'</td></tr>'}).join("");
+  $("pane-stats").innerHTML='<h3>This session (played)</h3><div class="tbl"><table><tr><th></th><th>Coins in</th><th>Fight</th><th>Purse</th><th>Total</th></tr>'+
+   '<tr><td>All ('+stats.rounds+' fights)</td><td>'+fmt(stats.in)+'</td><td>'+r(stats.fight,stats.in)+'</td><td>'+r(stats.purse,stats.in)+'</td><td>'+r(stats.fight+stats.purse,stats.in)+'</td></tr>'+ws+'</table></div>'+
+   '<h3>Simulator</h3><div class="note">Runs fights with random picks (random windows, sides, amounts and higher/lower calls) using the current math. Result draws ignore the forced winner.</div>'+
+   '<div class="row"><button class="btn hot" data-sim="10000">Simulate 10,000 fights</button><button class="btn" data-sim="100000">100,000</button></div><div id="simOut"></div>';
+  $("pane-stats").querySelectorAll("[data-sim]").forEach(b=>b.onclick=()=>{b.disabled=true;setTimeout(()=>{simulate(+b.dataset.sim);b.disabled=false},20)});
+}
+function simulate(n){
+  const T=fightT(),{N}=windows(T),p=pA(),M=C.math;const agg={in:0,fight:0,purse:0,w:{}};
+  for(let i=0;i<n;i++){
+    const winA=Math.random()<p,P=M.lo+Math.random()*(M.hi-M.lo),np=1+Math.floor(Math.random()*4);
+    for(let j=0;j<np;j++){
+      const k=1+Math.floor(Math.random()*N),side=Math.random()<.5?"A":"B",coins=AMTS[Math.floor(Math.random()*6)];
+      const pp=side==="A"?p:1-p,m=mult(pp,k,N),won=(side==="A")===winA,pay=won?coins*m:0;
+      let pr=0;if(k>=2){const gap=Math.max(0,coins*M.rtp-coins*pp*m)*M.share,L=newLine(),pays=bonusPays(gap,L),o=Math.random()<.5?"H":"L";pr=((o==="H")===(P>L))?pays[o]:0}
+      agg.in+=coins;agg.fight+=pay;agg.purse+=pr;const b=agg.w[k]||(agg.w[k]={in:0,t:0});b.in+=coins;b.t+=pay+pr;
+    }
+  }
+  $("simOut").innerHTML='<div class="tbl"><table><tr><th>'+fmt(n)+' fights</th><th>Coins in</th><th>Fight</th><th>Purse</th><th>Total</th></tr>'+
+    '<tr><td>All</td><td>'+fmt(agg.in)+'</td><td>'+pct(agg.fight/agg.in)+'</td><td>'+pct(agg.purse/agg.in)+'</td><td><b>'+pct((agg.fight+agg.purse)/agg.in)+'</b></td></tr>'+
+    Object.keys(agg.w).sort().map(k=>'<tr><td>'+wName(+k)+'</td><td>'+fmt(agg.w[k].in)+'</td><td></td><td></td><td>'+pct(agg.w[k].t/agg.w[k].in)+'</td></tr>').join("")+'</table></div>'+
+    '<div class="note">Target '+pct(M.rtp)+' × Purse share. Small shortfalls come from rounding multipliers down to '+M.step+'.</div>';
+}
+
+renderBal();renderDock();requestAnimationFrame(tick);
+// Show the first frame of the fight behind the start button
+vid.dataset.src=srcUrl("s1");vid.src=srcUrl("s1");vid.addEventListener("loadeddata",()=>{if(!R)vid.currentTime=14.5},{once:true});
+})();
+</script>
+</html>
