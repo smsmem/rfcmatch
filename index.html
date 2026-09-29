@@ -218,7 +218,7 @@ textarea{min-height:120px;resize:vertical}
       <div class="end r" id="endB"><small>Slide right</small><b id="nB">Brother Wu</b><span class="m" id="mB">2.51x</span></div>
       <div class="knob" id="knob" tabindex="0" role="slider" aria-label="Pick amount. Slide left or right to pick, push up or down to change the amount"><span class="ar">▲</span><span class="amt" id="amt">10</span><span class="u">Coins</span><span class="ar">▼</span></div>
     </div>
-    <div class="hint" id="hint">Slide the knob to a fighter to pick · push it up or down to raise or lower the amount</div>
+    <div class="hint" id="hint">Slide the knob to a fighter to pick · tap ▲ / ▼ on the knob (or push it up or down) to change the amount</div>
     <button class="primary" id="startBtn">Start fight</button>
     <div class="legal">Play with Coins · No purchase necessary · 18+ · Void where prohibited · Results decided by RNG at the start of each fight</div>
   </div>
@@ -502,20 +502,19 @@ function showResult(){
 }
 
 /* ============ Haptics ============ */
-// Android/Chrome: Vibration API. iPhone Safari (iOS 17.4+/18) has no Vibration API, but toggling a native
-// switch checkbox plays the system tick, so we click a hidden one during touch events.
+// Android/Chrome: Vibration API (works during drags too).
+// iPhone Safari (iOS 18+): no Vibration API. Clicking a native "switch" checkbox plays the system tick,
+// but Safari only allows it inside a tap (touch down / touch up), not while a finger is moving.
 const Haptic=(()=>{
-  let sw=null;try{const l=document.createElement("label");l.setAttribute("aria-hidden","true");
-    l.style.cssText="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
-    const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");i.tabIndex=-1;l.appendChild(i);document.body.appendChild(l);sw=l}catch(e){}
   const canVib=typeof navigator.vibrate==="function";
-  function tick(){if(canVib){try{navigator.vibrate(8)}catch(e){}}else if(sw){try{sw.click()}catch(e){}}}
+  function iosTick(){try{const l=document.createElement("label");l.setAttribute("aria-hidden","true");l.style.display="none";
+    const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");l.appendChild(i);
+    document.head.appendChild(l);l.click();document.head.removeChild(l)}catch(e){}}
+  const vib=x=>{try{navigator.vibrate(x)}catch(e){}};
   return{
-    light:()=>{if(canVib){try{navigator.vibrate(6)}catch(e){}}else tick()},       // pick up the knob
-    step:()=>{if(canVib){try{navigator.vibrate(10)}catch(e){}}else tick()},       // amount up / down
-    edge:()=>{if(canVib){try{navigator.vibrate(14)}catch(e){}}else tick()},       // reached a fighter's pick zone
-    lock:()=>{if(canVib){try{navigator.vibrate([18,50,26])}catch(e){}}else{tick();setTimeout(tick,90)}}, // pick locked in
-    limit:()=>{if(canVib){try{navigator.vibrate([6,30,6])}catch(e){}}else tick()} // already at min / max amount
+    tap:(ms)=>{canVib?vib(ms||10):iosTick()},          // safe inside pointerdown / pointerup / keydown
+    move:(ms)=>{if(canVib)vib(ms||10)},                 // during a drag: Android only (iOS blocks it)
+    lock:()=>{if(canVib)vib([18,50,26]);else{iosTick();setTimeout(iosTick,70)}}
   };
 })();
 
@@ -523,14 +522,14 @@ const Haptic=(()=>{
 (function(){
   const kn=$("knob"),sl=$("slider");let st=null;
   const maxX=()=>sl.clientWidth/2-46;
-  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0,zone:0};kn.setPointerCapture(e.pointerId);kn.classList.add("drag");Haptic.light()});
+  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0,zone:0,changed:false,moved:false};kn.setPointerCapture(e.pointerId);kn.classList.add("drag");Haptic.tap(6)});
   kn.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
     if(!st.mode){if(Math.abs(dy)>5&&Math.abs(dy)>Math.abs(dx)){st.mode="amt";st.armed=true}
       else if(Math.abs(dx)>10)st.mode="side"}
     st.dy=dy;
     if(st.mode==="side"){if(sl.classList.contains("off"))return;const x=Math.max(-maxX(),Math.min(maxX(),dx));kn.style.transform="translateX("+x+"px)";const r=x/maxX();
       $("gL").style.opacity=r<0?Math.min(1,-r):0;$("gR").style.opacity=r>0?Math.min(1,r):0;$("endA").classList.toggle("hot",r<-.65);$("endB").classList.toggle("hot",r>.65);
-      const z=r<-.65?-1:r>.65?1:0;if(z!==st.zone){if(z!==0)Haptic.edge();st.zone=z}}
+      const z=r<-.65?-1:r>.65?1:0;if(z!==st.zone){if(z!==0)Haptic.move(14);st.zone=z}}
     if(st.mode==="amt"){
       // One slight push = one step. Holding the push repeats slowly. Let it come back to centre to push again.
       if(st.armed&&Math.abs(dy)>5){st.armed=false;const dir=dy<0?1:-1;step(dir);clearTimeout(st.hold);clearInterval(st.rep);
@@ -538,13 +537,17 @@ const Haptic=(()=>{
       if(!st.armed&&Math.abs(dy)<=3){st.armed=true;clearTimeout(st.hold);clearInterval(st.rep)}
       kn.style.transform="translateY("+Math.max(-12,Math.min(12,dy/2))+"px)"}
   });
-  const end=e=>{if(!st)return;clearInterval(st.rep);clearTimeout(st.hold);const dx=e.clientX-st.x;kn.classList.remove("drag");
+  const end=e=>{if(!st)return;clearInterval(st.rep);clearTimeout(st.hold);const dx=e.clientX-st.x,dy=e.clientY-st.y;kn.classList.remove("drag");
+    if(!st.mode&&Math.abs(dx)<6&&Math.abs(dy)<6&&e.type==="pointerup"){const r=kn.getBoundingClientRect();step(e.clientY<r.top+r.height/2?1:-1,true)}
+    else if(st.mode==="amt"&&st.changed)Haptic.tap(10);
     if(st.mode==="side"&&Math.abs(dx)>maxX()*.65)commit(dx<0?"A":"B");
     st=null;kn.style.transform="";$("gL").style.opacity=0;$("gR").style.opacity=0;$("endA").classList.remove("hot");$("endB").classList.remove("hot")};
   kn.addEventListener("pointerup",end);kn.addEventListener("pointercancel",end);
-  kn.addEventListener("keydown",e=>{if(e.key==="ArrowUp"){step(1);e.preventDefault()}else if(e.key==="ArrowDown"){step(-1);e.preventDefault()}else if(e.key==="ArrowLeft"){commit("A");e.preventDefault()}else if(e.key==="ArrowRight"){commit("B");e.preventDefault()}});
+  kn.addEventListener("keydown",e=>{if(e.key==="ArrowUp"){step(1,true);e.preventDefault()}else if(e.key==="ArrowDown"){step(-1,true);e.preventDefault()}else if(e.key==="ArrowLeft"){commit("A");e.preventDefault()}else if(e.key==="ArrowRight"){commit("B");e.preventDefault()}});
   sl.addEventListener("wheel",e=>{e.preventDefault();step(e.deltaY<0?1:-1)},{passive:false});
-  function step(d){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];if(was!==amtIdx)Haptic.step();else Haptic.limit()}
+  function step(d,tap){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];
+    if(st)st.changed=st.changed||was!==amtIdx;
+    if(tap)Haptic.tap(was!==amtIdx?10:6);else Haptic.move(was!==amtIdx?10:[6,30,6])}
 })();
 
 /* ============ Start ============ */
