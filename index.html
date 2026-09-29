@@ -120,8 +120,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .legal{font-size:10px;color:var(--muted);text-align:center;letter-spacing:.02em}
 
 /* Result sheet */
-.result{position:absolute;left:0;right:0;bottom:0;max-height:64%;border-top:2px solid var(--neon);border-radius:18px 18px 0 0;background:rgba(14,17,25,.97);padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;backdrop-filter:blur(4px);display:flex;flex-direction:column;padding:16px;gap:12px;overflow-y:auto;z-index:20}
-.result h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:40px;letter-spacing:.03em;text-transform:uppercase;line-height:1;text-wrap:balance}
+.result{position:absolute;left:0;right:0;bottom:0;max-height:94%;border-top:2px solid var(--neon);border-radius:18px 18px 0 0;background:rgba(14,17,25,.97);padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;backdrop-filter:blur(4px);display:flex;flex-direction:column;padding:16px;gap:12px;overflow-y:auto;z-index:20}
+.result h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:clamp(28px,8vw,40px);letter-spacing:.03em;text-transform:uppercase;line-height:1;text-wrap:balance}
 .result .sub{color:var(--muted);margin-top:-6px}
 .rrow{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}
 .rrow .num{white-space:nowrap}
@@ -273,8 +273,8 @@ const AMTS=[1,2,5,10,25,50,100,250];
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=v=>String(v).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch]);
 let C=clone(DEF);
-try{const s=localStorage.getItem("rfc-harness-v7");if(s){const p=JSON.parse(s);C={...C,...p,force:{...DEF.force,...(p.force||{})},sources:(p.sources||[]).filter(x=>!x.auto&&!String(x.url).startsWith("blob:"))};}}catch(e){}
-function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!s.auto&&!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v7",JSON.stringify(o))}catch(e){}}
+try{const s=localStorage.getItem("rfc-harness-v9");if(s){const p=JSON.parse(s);C={...C,...p,force:{...DEF.force,...(p.force||{})},sources:(p.sources||[]).filter(x=>!x.auto&&!String(x.url).startsWith("blob:"))};}}catch(e){}
+function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!s.auto&&!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v9",JSON.stringify(o))}catch(e){}}
 
 /* ============ Math ============ */
 const $=id=>document.getElementById(id);
@@ -332,9 +332,9 @@ function buildPlaylist(res,T,list){
   // Finish + outcome: only these know the winner
   const W=C.fighters[res.w].name, mName={KO:"KO/TKO",DEC:"Decision",SUB:"Submission"}[res.m];
   const fc=pickClip("finish",res.w,res.m,list);if(fc&&fc.side===res.w&&fc.method&&fc.method!=="any")res.m=fc.method;
-  pl.push(fc?{phase:"finish",clip:fc,dur:fc.end-fc.start,label:fc.tag}:{phase:"finish",clip:null,dur:3.5,label:"Finish",ph:[W+" by "+mName,"Finish clip for "+W+" not in the library yet"]});
+  pl.push(fc?{phase:"finish",clip:fc,dur:fc.end-fc.start,label:fc.tag}:{phase:"finish",clip:null,dur:3.5,label:"Finish",ph:[W+" wins",'No '+W+' win video in the rotation. Add one (e.g. fight-01.mp4 / fight-02.mp4) next to this page.']});
   const oc=pickClip("outcome",res.w,null,list);
-  pl.push(oc?{phase:"outcome",clip:oc,dur:oc.end-oc.start,label:oc.tag}:{phase:"outcome",clip:null,dur:3,label:"Outcome",ph:[W+" wins","Hand-raise clip for "+W+" not in the library yet"]});
+  pl.push(oc?{phase:"outcome",clip:oc,dur:oc.end-oc.start,label:oc.tag}:{phase:"outcome",clip:null,dur:3,label:"Outcome",ph:[W+" wins","Hand-raise clip for "+W+" not found"]});
   return pl;
 }
 function newRound(){
@@ -343,7 +343,9 @@ function newRound(){
   const forced=pool.find(s=>s.id===C.force.video);
   if(forced){fight=forced;const vw=videoWinner(forced.id);if(vw&&C.force.winner==="rand")res={w:vw,m:res.m}}
   else{const match=pool.filter(s=>videoWinner(s.id)===res.w);const use=match.length?match:pool;fight=use[Math.floor(Math.random()*use.length)]||null}
-  const list=clipsFor(fight?fight.id:"*");
+  // Never show the other fighter's win: if no video ends with the drawn winner, drop that video's ending
+  let list=clipsFor(fight?fight.id:"*");
+  if(fight&&videoWinner(fight.id)&&videoWinner(fight.id)!==res.w)list=list.filter(c=>!((c.phase==="finish"||c.phase==="outcome")&&c.side!=="-"));
   const T=fightT(list),{len,N,Nlive}=windows(T);
   const pl=buildPlaylist(res,T,list);
   const pre=pl.filter(x=>x.phase==="prelude").reduce((s,x)=>s+x.dur,0);
@@ -365,7 +367,7 @@ function playItem(i){
   if(it.clip&&vid.error&&vid.dataset.src===srcUrl(it.clip.src)){it.clip=null;it.ph=MISSING}
   if(it.clip){
     $("ph").hidden=true;const url=srcUrl(it.clip.src);
-    const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>0.3){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}vid.play().catch(()=>{})};
+    const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>1.0){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}if(vid.paused)vid.play().catch(()=>{})};
     if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url;vid.addEventListener("loadedmetadata",go,{once:true});vid.load()}else go();
   }else{
     vid.pause();$("ph").hidden=false;$("phT").textContent=it.ph[0];$("phS").textContent=it.ph[1];R.wall=performance.now();
@@ -382,7 +384,6 @@ function tick(){
   if(it.clip){if(!R.seeking)R.itemT=Math.max(0,Math.min(it.dur,vid.currentTime-it.clip.start))}
   else R.itemT=(performance.now()-R.wall)/1000;
   const g=R.done+R.itemT;R.g=g;
-  if(it.phase==="outcome"&&R.itemT>1.2&&!R.resultShown)showResult();
   if(R.itemT>=it.dur-0.04||(it.clip&&vid.ended)){R.done+=it.dur;if(R.idx+1<R.pl.length)playItem(R.idx+1);else{R.idx=R.pl.length;vid.pause();if(!R.resultShown)showResult()}}
   renderStage();renderDock();
 }
@@ -398,7 +399,7 @@ function winState(){
 /* ============ Rendering ============ */
 function renderStage(){
   const g=R.g||0,live=g-R.pre;
-  $("clock").textContent=live<0?"Bell in "+mmss(-live):mmss(Math.min(live,R.T))+" / "+mmss(R.T);
+  $("clock").textContent=live<0?"Bell in "+mmss(-live):"Fight "+mmss(live);
   // Purse meter: random pace, never tied to the final number
   const prog=Math.max(0,Math.min(1,g/(R.pre+R.T)));const kn=R.knots;const seg=Math.min(5,Math.floor(prog*6));
   const fill=R.resultShown?1:0.08+0.8*(kn[seg]+(kn[seg+1]-kn[seg])*(prog*6-seg));
@@ -488,7 +489,7 @@ function showResult(){
     $("st2").innerHTML='<div class="step reveal"><small>Final Purse</small><b id="pnum">'+fmt(C.math.lo)+'</b></div>';
     const t0=performance.now(),from=C.math.lo,to=me.purse;
     (function up(){const k=Math.min(1,(performance.now()-t0)/1500);const e=1-Math.pow(1-k,3);const n=$("pnum");if(n)n.textContent=fmt(from+(to-from)*e);if(k<1)requestAnimationFrame(up)})();
-    el.scrollTop=el.scrollHeight;
+    
   },2200);
   // Step 3: bonus results and extra Coins made
   setTimeout(()=>{if(R!==me)return;
@@ -496,7 +497,7 @@ function showResult(){
       '<div class="big"><span>Extra Coins made</span><span class="num '+(purse>0?'win':'mut')+'">+'+f2(purse)+'</span></div>'+
       '<div class="total"><span>Total</span><span class="num">'+f2(fight+purse)+' / '+inC+'</span></div>'+
       '<button class="primary" id="again">Next fight</button></div>';
-    bal+=purse;renderBal();$("again").onclick=()=>{startRound()};el.scrollTop=el.scrollHeight;renderStats();
+    bal+=purse;renderBal();$("again").onclick=()=>{startRound()};renderStats();
   },4200);
 }
 
