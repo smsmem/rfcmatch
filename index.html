@@ -450,7 +450,7 @@ function commit(side){
   const p=side==="A"?R.p:1-R.p,m=mult(p,ws.k,R.N);
   const gap=Math.max(0,coins*C.math.rtp-coins*p*m)*C.math.share;
   const pk={k:ws.k,side,coins,m,p,gap};
-  bal-=coins;R.picks.push(pk);renderBal();renderTicket();
+  bal-=coins;R.picks.push(pk);renderBal();renderTicket();Haptic.lock();
   banner(C.fighters[side].name+" "+f2(m)+"x",coins+" Coins locked");
   if(ws.k>=2)openPurse(pk);
 }
@@ -501,17 +501,36 @@ function showResult(){
   },4200);
 }
 
+/* ============ Haptics ============ */
+// Android/Chrome: Vibration API. iPhone Safari (iOS 17.4+/18) has no Vibration API, but toggling a native
+// switch checkbox plays the system tick, so we click a hidden one during touch events.
+const Haptic=(()=>{
+  let sw=null;try{const l=document.createElement("label");l.setAttribute("aria-hidden","true");
+    l.style.cssText="position:fixed;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
+    const i=document.createElement("input");i.type="checkbox";i.setAttribute("switch","");i.tabIndex=-1;l.appendChild(i);document.body.appendChild(l);sw=l}catch(e){}
+  const canVib=typeof navigator.vibrate==="function";
+  function tick(){if(canVib){try{navigator.vibrate(8)}catch(e){}}else if(sw){try{sw.click()}catch(e){}}}
+  return{
+    light:()=>{if(canVib){try{navigator.vibrate(6)}catch(e){}}else tick()},       // pick up the knob
+    step:()=>{if(canVib){try{navigator.vibrate(10)}catch(e){}}else tick()},       // amount up / down
+    edge:()=>{if(canVib){try{navigator.vibrate(14)}catch(e){}}else tick()},       // reached a fighter's pick zone
+    lock:()=>{if(canVib){try{navigator.vibrate([18,50,26])}catch(e){}}else{tick();setTimeout(tick,90)}}, // pick locked in
+    limit:()=>{if(canVib){try{navigator.vibrate([6,30,6])}catch(e){}}else tick()} // already at min / max amount
+  };
+})();
+
 /* ============ Slider (Konjo style) ============ */
 (function(){
   const kn=$("knob"),sl=$("slider");let st=null;
   const maxX=()=>sl.clientWidth/2-46;
-  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0};kn.setPointerCapture(e.pointerId);kn.classList.add("drag")});
+  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0,zone:0};kn.setPointerCapture(e.pointerId);kn.classList.add("drag");Haptic.light()});
   kn.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
     if(!st.mode){if(Math.abs(dy)>5&&Math.abs(dy)>Math.abs(dx)){st.mode="amt";st.armed=true}
       else if(Math.abs(dx)>10)st.mode="side"}
     st.dy=dy;
     if(st.mode==="side"){if(sl.classList.contains("off"))return;const x=Math.max(-maxX(),Math.min(maxX(),dx));kn.style.transform="translateX("+x+"px)";const r=x/maxX();
-      $("gL").style.opacity=r<0?Math.min(1,-r):0;$("gR").style.opacity=r>0?Math.min(1,r):0;$("endA").classList.toggle("hot",r<-.65);$("endB").classList.toggle("hot",r>.65)}
+      $("gL").style.opacity=r<0?Math.min(1,-r):0;$("gR").style.opacity=r>0?Math.min(1,r):0;$("endA").classList.toggle("hot",r<-.65);$("endB").classList.toggle("hot",r>.65);
+      const z=r<-.65?-1:r>.65?1:0;if(z!==st.zone){if(z!==0)Haptic.edge();st.zone=z}}
     if(st.mode==="amt"){
       // One slight push = one step. Holding the push repeats slowly. Let it come back to centre to push again.
       if(st.armed&&Math.abs(dy)>5){st.armed=false;const dir=dy<0?1:-1;step(dir);clearTimeout(st.hold);clearInterval(st.rep);
@@ -525,7 +544,7 @@ function showResult(){
   kn.addEventListener("pointerup",end);kn.addEventListener("pointercancel",end);
   kn.addEventListener("keydown",e=>{if(e.key==="ArrowUp"){step(1);e.preventDefault()}else if(e.key==="ArrowDown"){step(-1);e.preventDefault()}else if(e.key==="ArrowLeft"){commit("A");e.preventDefault()}else if(e.key==="ArrowRight"){commit("B");e.preventDefault()}});
   sl.addEventListener("wheel",e=>{e.preventDefault();step(e.deltaY<0?1:-1)},{passive:false});
-  function step(d){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];if(was!==amtIdx&&navigator.vibrate){try{navigator.vibrate(8)}catch(e){}}}
+  function step(d){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];if(was!==amtIdx)Haptic.step();else Haptic.limit()}
 })();
 
 /* ============ Start ============ */
