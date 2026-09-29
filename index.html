@@ -30,6 +30,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .bal{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
 .bal small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .bal b{font-family:var(--f-mono);font-size:16px}
+.bal b.flash{animation:flash 1s ease-out}
+@keyframes flash{0%{color:var(--win);transform:scale(1.25)}100%{color:var(--fg);transform:none}}
 .iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer}
 .iconbtn svg{width:18px;height:18px;fill:none;stroke:var(--fg);stroke-width:1.8}
 
@@ -131,6 +133,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .big .num{font-family:var(--f-mono);font-size:22px}
 .total{display:flex;justify-content:space-between;font-family:var(--f-display);font-weight:900;font-size:26px;text-transform:uppercase;letter-spacing:.04em}
 
+/* Rules sheet */
+.iconbtn .q{font-family:var(--f-display);font-weight:900;font-size:22px;line-height:1}
+.rules{position:fixed;inset:0;z-index:60;background:rgba(5,6,9,.7);display:flex;align-items:flex-end;justify-content:center}
+.rules .sheet{width:min(560px,100%);max-height:88%;overflow-y:auto;background:var(--panel);border-top:2px solid var(--neon);border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.rules h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:32px;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center}
+.rules h2 .btn{margin-left:auto;font-family:var(--f-body);font-size:13px;letter-spacing:0;text-transform:none}
+.rules h3{margin:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--neon)}
+.rules p,.rules li{margin:0;font-size:14px;line-height:1.5;color:var(--fg);max-width:65ch}
+.rules ol,.rules ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.rules .sheet>*{flex-shrink:0}
+.rules .fine{font-size:11px;color:var(--muted)}
+.rules .tbl td,.rules .tbl th{font-size:13px}
+
 /* Test drawer */
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:50;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s}
 .drawer.open{transform:none}
@@ -168,6 +183,7 @@ textarea{min-height:120px;resize:vertical}
     <div class="brand">R<span>F</span>C</div>
     <div class="spacer"></div>
     <div class="bal"><small>Coins</small><b id="bal" class="num">1,000</b></div>
+    <button class="iconbtn" id="openRules" aria-label="How to play"><span class="q">?</span></button>
     <button class="iconbtn" id="openDrawer" aria-label="Open test settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
 
@@ -207,6 +223,8 @@ textarea{min-height:120px;resize:vertical}
   </div>
 </div>
 
+<div class="rules" id="rules" hidden role="dialog" aria-modal="true" aria-label="How to play"><div class="sheet" id="rulesBody"></div></div>
+
 <aside class="drawer" id="drawer" aria-label="Test settings">
   <header><b>Test Bench</b><div class="spacer" style="flex:1"></div><button class="btn" id="closeDrawer">Close</button></header>
   <div class="tabs" id="tabs">
@@ -224,7 +242,7 @@ textarea{min-height:120px;resize:vertical}
 /* ============ Defaults (from RFC_Math_Model_v1.xlsx) ============ */
 const VIDEO_FILE="Full-fight-viking-vs-monk-viking-wins-small.mp4";
 const DEF={
-  math:{rtp:.94,step:.01,cap:50,floor:1.05,scale:400,minWin:15,frac:1/3,lastRtp:.65,share:1,lo:1000,hi:3000,lineMin:.3,lineMax:.7,startCoins:1000},
+  math:{rtp:.94,step:.01,cap:50,floor:1.05,scale:400,minWin:15,frac:1/3,lastRtp:.65,share:1,lo:1000,hi:3000,lineMin:.3,lineMax:.7,startCoins:1000,refillAt:250},
   fighters:{A:{name:"Viking",rating:1650,ko:.60,dec:.30,sub:.10},B:{name:"Monk",rating:1560,ko:.45,dec:.35,sub:.20}},
   force:{winner:"rand",method:"rand"},
   order:"original", fightSec:0, // 0 = use story clip length
@@ -245,8 +263,8 @@ const AMTS=[1,2,5,10,25,50,100,250];
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=v=>String(v).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch]);
 let C=clone(DEF);
-try{const s=localStorage.getItem("rfc-harness-v2");if(s){const p=JSON.parse(s);C={...C,...p,sources:DEF.sources.concat((p.sources||[]).filter(x=>x.id!=="s1"&&!String(x.url).startsWith("blob:")))};}}catch(e){}
-function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v2",JSON.stringify(o))}catch(e){}}
+try{const s=localStorage.getItem("rfc-harness-v3");if(s){const p=JSON.parse(s);C={...C,...p,sources:DEF.sources.concat((p.sources||[]).filter(x=>x.id!=="s1"&&!String(x.url).startsWith("blob:")))};}}catch(e){}
+function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v3",JSON.stringify(o))}catch(e){}}
 
 /* ============ Math ============ */
 const $=id=>document.getElementById(id);
@@ -269,7 +287,7 @@ function bonusPays(gap,L){const ph=pHigher(L);return{H:gap/ph,L:gap/(1-ph)}}
 
 /* ============ Round state ============ */
 let bal=C.math.startCoins, amtIdx=3;
-const stats={rounds:0,in:0,fight:0,purse:0,byW:{}};
+const stats={rounds:0,in:0,fight:0,purse:0,byW:{},refills:0,refilled:0};
 let R=null; // current round
 const vid=$("vid");
 
@@ -397,12 +415,16 @@ function renderTicket(){
 }
 function banner(t,s){$("banT").textContent=t;$("banS").textContent=s||"";$("banner").hidden=false;clearTimeout(banner.tm);banner.tm=setTimeout(()=>$("banner").hidden=true,1600)}
 function wName(k){return k===1?"Pre":"Live "+(k-1)}
+// Test Coins top themselves up so play never stops. Top-ups are kept out of the RTP numbers.
+function topUp(need){const M=C.math,floor=Math.max(M.refillAt,need||0);if(bal>=floor)return false;
+  const add=Math.max(M.startCoins,need||0)-bal;bal+=add;stats.refills++;stats.refilled+=add;renderBal();
+  const el=$("bal");el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");banner("+"+fmt(add)+" Coins","Test Coins topped up");return true}
 function renderBal(){$("bal").textContent=fmt(bal)}
 
 /* ============ Picks ============ */
 function commit(side){
   const ws=winState();if(!R||!ws.open||R.pending)return;
-  const coins=AMTS[amtIdx];if(coins>bal){banner("Not enough Coins","");return}
+  const coins=AMTS[amtIdx];if(coins>bal)topUp(coins);
   const p=side==="A"?R.p:1-R.p,m=mult(p,ws.k,R.N);
   const gap=Math.max(0,coins*C.math.rtp-coins*p*m)*C.math.share;
   const pk={k:ws.k,side,coins,m,p,gap};
@@ -486,9 +508,41 @@ function showResult(){
 
 /* ============ Start ============ */
 function startRound(){
-  newRound();vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
+  topUp();newRound();vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
 }
 $("startBtn").onclick=startRound;
+
+/* ============ Rules ============ */
+function renderRules(){
+  const M=C.math,T=fightT(),{len,N,Nlive}=windows(T),p=pA(),A=C.fighters.A.name,B=C.fighters.B.name;
+  const rows=[];for(let k=1;k<=N;k++)rows.push('<tr><td>'+(k===1?'Pre-fight':'Live '+(k-1)+' ('+mmss((k-2)*len)+'–'+mmss((k-1)*len)+')')+'</td><td>'+f2(mult(p,k,N))+'x</td><td>'+f2(mult(1-p,k,N))+'x</td></tr>');
+  $("rulesBody").innerHTML=
+   '<h2>How to play<button class="btn" id="closeRules">Close</button></h2>'+
+   '<p>Pick who wins the fight. The winner is decided by RNG the moment the fight starts, and the fight you watch plays out that result. Nothing on screen during the fight (who looks ahead, damage, knockdowns) tells you who wins.</p>'+
+   '<h3>Making a pick</h3><ol>'+
+     '<li>Slide the knob <b>left</b> to pick '+esc(A)+' or <b>right</b> to pick '+esc(B)+'.</li>'+
+     '<li>Push the knob slightly <b>up</b> or <b>down</b> to raise or lower the amount of Coins.</li>'+
+     '<li>Each pick locks in at the multiplier showing when you make it. You can make as many picks as you like, on either fighter.</li></ol>'+
+   '<h3>When you can pick</h3>'+
+   '<p>The countdown at the bottom shows how long the current window stays open. The pre-fight window runs during the walkouts. Once the fight starts, the multipliers drop and there are '+Nlive+' live windows of '+mmss(len)+' each. Picks close at '+mmss(Nlive*len)+' into the fight, before the finish.</p>'+
+   '<div class="tbl"><table><tr><th>Window</th><th>'+esc(A)+'</th><th>'+esc(B)+'</th></tr>'+rows.join("")+'</table></div>'+
+   '<h3>Bonus round</h3><ul>'+
+     '<li>Every live pick automatically adds Coins to the bonus round. The pop-up shows how many.</li>'+
+     '<li>Call whether the final <b>Purse</b> lands <b>higher</b> or <b>lower</b> than the amount shown. Each button shows what it pays.</li>'+
+     '<li>If you don\'t choose before the window closes, one is chosen for you at random.</li>'+
+     '<li>The Purse meter fills during the fight but never shows the number. It is revealed at the end.</li></ul>'+
+   '<h3>How you get paid</h3><ol>'+
+     '<li>The knockout plays first.</li>'+
+     '<li>Winning fight picks pay Coins × their multiplier.</li>'+
+     '<li>The final Purse is revealed.</li>'+
+     '<li>Each correct higher/lower call pays its bonus prize as Extra Coins.</li></ol>'+
+   '<p>Over time, picks return about '+pct(M.rtp)+' of Coins played including the bonus round. Pre-fight picks pay the most; later picks pay less on the fight and put the difference into the bonus round.</p>'+
+   '<p class="fine">Play with Coins · No purchase necessary · 18+ · Void where prohibited · All results are determined by RNG at the start of each fight. Test build: Coins top up automatically when they run low.</p>';
+  $("closeRules").onclick=()=>{$("rules").hidden=true};
+}
+$("openRules").onclick=()=>{renderRules();$("rules").hidden=false};
+$("rules").addEventListener("click",e=>{if(e.target.id==="rules")$("rules").hidden=true});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("rules").hidden=true});
 
 /* ============ Test Bench ============ */
 $("openDrawer").onclick=()=>{$("drawer").classList.add("open");renderAllPanes()};
@@ -513,6 +567,7 @@ function renderMath(){
    fld("Span low",M.lo,'data-m="lo" type="number"')+fld("Span high",M.hi,'data-m="hi" type="number"')+
    fld("Line from (share of span)",M.lineMin,'data-m="lineMin" type="number" step="0.05"')+fld("Line to (share of span)",M.lineMax,'data-m="lineMax" type="number" step="0.05"')+
    fld("Share of gap to bonus",M.share,'data-m="share" type="number" step="0.05"')+'</div>'+
+   '<h3>Test Coins</h3><div class="grid2">'+fld("Top up to",M.startCoins,'data-m="startCoins" type="number"')+fld("Top up when below",M.refillAt,'data-m="refillAt" type="number"')+'</div>'+
    '<div class="note">Each live pick adds its gap (RTP minus that window\'s return) to the bonus round. The player calls the final Purse higher or lower than a line; each side pays gap ÷ its chance, so the bonus returns the gap on average.</div>'+
    '<h3>This fight: '+C.fighters.A.name+' '+pct(p)+' vs '+C.fighters.B.name+' '+pct(1-p)+'</h3>'+
    '<div class="note">Pre-fight pick during the walkouts, then fight '+mmss(T)+' → '+Nlive+' live windows of '+mmss(len)+'. Picks close at '+mmss(Nlive*len)+' of the fight; the knockout plays after. '+(okP?'<span class="ok">Matchup is inside the floor limit ('+pct(maxP)+').</span>':'<span class="bad">A fighter is above '+pct(maxP)+' — the 1.05x floor would pay over RTP.</span>')+'</div>'+
@@ -581,6 +636,7 @@ function renderStats(){
   const ws=Object.keys(stats.byW).sort().map(k=>{const b=stats.byW[k];return '<tr><td>'+wName(+k)+'</td><td>'+fmt(b.in)+'</td><td>'+r(b.fight,b.in)+'</td><td>'+r(b.purse,b.in)+'</td><td>'+r(b.fight+b.purse,b.in)+'</td></tr>'}).join("");
   $("pane-stats").innerHTML='<h3>This session (played)</h3><div class="tbl"><table><tr><th></th><th>Coins in</th><th>Fight</th><th>Purse</th><th>Total</th></tr>'+
    '<tr><td>All ('+stats.rounds+' fights)</td><td>'+fmt(stats.in)+'</td><td>'+r(stats.fight,stats.in)+'</td><td>'+r(stats.purse,stats.in)+'</td><td>'+r(stats.fight+stats.purse,stats.in)+'</td></tr>'+ws+'</table></div>'+
+   '<div class="note">Test Coins topped up '+stats.refills+' times (+'+fmt(stats.refilled)+'). Top-ups are not counted in RTP.</div>'+
    '<h3>Simulator</h3><div class="note">Runs fights with random picks (random windows, sides, amounts and higher/lower calls) using the current math. Result draws ignore the forced winner.</div>'+
    '<div class="row"><button class="btn hot" data-sim="10000">Simulate 10,000 fights</button><button class="btn" data-sim="100000">100,000</button></div><div id="simOut"></div>';
   $("pane-stats").querySelectorAll("[data-sim]").forEach(b=>b.onclick=()=>{b.disabled=true;setTimeout(()=>{simulate(+b.dataset.sim);b.disabled=false},20)});
