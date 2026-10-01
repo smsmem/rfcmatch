@@ -276,7 +276,7 @@ textarea{min-height:120px;resize:vertical}
 (()=>{
 "use strict";
 /* ============ Defaults (from RFC_Math_Model_v1.xlsx) ============ */
-// Fight videos are found automatically: fight-01.mp4, fight-02.mp4 … fight-12.mp4 next to this page.
+// Fight videos are the files each fight's clip map names (fight-02.mp4 … fight-05.mp4), placed next to this page.
 // Each fight picks one of them at random. Clips marked "*" are the shared template used by every video
 // that has no clips of its own (all current videos share the same edit and timing).
 const VIDEO_NAME=i=>"fight-"+String(i).padStart(2,"0")+".mp4", MAX_VIDEOS=12;
@@ -301,8 +301,6 @@ const DEF={
      {id:"c6",src:"*",phase:"story",tag:"reset + circling",side:"-",method:"any",start:36,end:46},
      {id:"c7",src:"*",phase:"story",tag:"pressure",side:"-",method:"any",start:46,end:52},
      // Endings differ by video: each video is tied to the winner it shows
-     {id:"e1f",src:"fight-01.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
-     {id:"e1o",src:"fight-01.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
      {id:"e2f",src:"fight-02.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
      {id:"e2o",src:"fight-02.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
      {id:"e3f",src:"fight-03.mp4",phase:"finish",tag:"leg kicks → Jarl down → ref waves it off",side:"B",method:"KO",start:52,end:63},
@@ -332,7 +330,7 @@ const PORT={"jarl": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkG
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=v=>String(v).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch]);
 let C=clone(DEF);
-const KEY="rfc-match-v12";
+const KEY="rfc-match-v14";
 try{const s=localStorage.getItem(KEY);if(s){const p=JSON.parse(s);C={...C,...p,math:{...DEF.math,...(p.math||{})},force:{...DEF.force,...(p.force||{})},sources:(p.sources||[]).filter(x=>!x.auto&&!String(x.url).startsWith("blob:"))};
   if(!Array.isArray(p.bouts)||p.bouts.length!==DEF.bouts.length||p.bouts.some((b,i)=>b.id!==DEF.bouts[i].id))C.bouts=clone(DEF.bouts);}}catch(e){C=clone(DEF)}
 function save(){try{const o=clone(C);delete o.fighters;delete o.clips;o.sources=o.sources.filter(s=>!s.auto&&!String(s.url).startsWith("blob:"));localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
@@ -399,7 +397,7 @@ function buildPlaylist(res,T,list){
   // Finish + outcome: only these know the winner
   const W=C.fighters[res.w].name, mName={KO:"KO/TKO",DEC:"Decision",SUB:"Submission"}[res.m];
   const fc=pickClip("finish",res.w,res.m,list);if(fc&&fc.side===res.w&&fc.method&&fc.method!=="any")res.m=fc.method;
-  pl.push(fc?{phase:"finish",clip:fc,dur:fc.end-fc.start,label:fc.tag}:{phase:"finish",clip:null,dur:3.5,label:"Finish",ph:[W+" wins",'No '+W+' win video in the rotation. Add one (e.g. fight-01.mp4 / fight-02.mp4) next to this page.']});
+  pl.push(fc?{phase:"finish",clip:fc,dur:fc.end-fc.start,label:fc.tag}:{phase:"finish",clip:null,dur:3.5,label:"Finish",ph:[W+" wins",'No '+W+' win video in the rotation. Add its video next to this page.']});
   const oc=pickClip("outcome",res.w,null,list);
   pl.push(oc?{phase:"outcome",clip:oc,dur:oc.end-oc.start,label:oc.tag}:{phase:"outcome",clip:null,dur:3,label:"Outcome",ph:[W+" wins","Hand-raise clip for "+W+" not found"]});
   return pl;
@@ -424,7 +422,7 @@ function newRound(){
 
 /* ============ Playback ============ */
 const srcUrl=id=>{if(id==="*")return R&&R.fight?R.fight.url:(R?"":((boutVideos()[0]||{}).url||""));const s=C.sources.find(x=>x.id===id);return s?s.url:""};
-const MISSING=["Video not found","Put this fight's videos (fight-01.mp4 … fight-05.mp4) next to this page, or add videos under Test Bench → Clips"];
+const MISSING=["Video not found","Put this fight's videos (fight-02.mp4 … fight-05.mp4) next to this page, or add videos under Test Bench → Clips"];
 function playItem(i){
   R.idx=i;R.itemT=0;const it=R.pl[i];
   if(!it){return}
@@ -636,14 +634,11 @@ function fcFighter(F,side,m){
     '<span class="pay"><small>Pays</small>'+f2(m)+'x</span></div>'}
 function renderCard(){
   const cards=C.bouts.map((b,i)=>{const p=pA(b.fighters),on=sel.has(i),r=night[i];
-    const vids=boutVideos(b),wins={A:vids.some(v=>videoWinnerIn(b,v.id)==="A"),B:vids.some(v=>videoWinnerIn(b,v.id)==="B")};
-    const need=[...new Set(b.clips.filter(c=>c.src!=="*").map(c=>c.src))];
-    const vline=discovered?need.map(n=>n.replace(/\.mp4$/i,"")+(vids.some(v=>v.id===n)?" ✓":" missing")).join(" · "):"Checking videos…";
     return '<div class="bout'+(on?' on':'')+(/main event/i.test(b.slot)&&!/co-/i.test(b.slot)?' main':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-b="'+i+'">'+
       '<div class="bTop"><span class="slot">Fight '+(i+1)+' · '+esc(b.slot)+'</span><span class="chk">'+(on?'✓ Watching':'+ Add fight')+'</span></div>'+
       '<div class="bRow">'+fcFighter(b.fighters.A,"A",mult(p,1,1))+'<div class="vs">VS</div>'+fcFighter(b.fighters.B,"B",mult(1-p,1,1))+'</div>'+
       (r?'<div class="bRes">Last time: <b>'+esc(b.fighters[r.w].name)+'</b> by '+METH[r.m]+' · you played '+fmt(r.inC)+', got back <b>'+f2(r.out)+'</b></div>':'')+
-      '<div class="vids">'+vline+'</div></div>'}).join("");
+      '</div>'}).join("");
   const n=sel.size,only=[...sel][0];
   const label=n===0?"Choose a fight":n===C.bouts.length&&n>1?(n===2?"Watch both fights":"Watch all "+n+" fights"):n===1?"Watch Fight "+(only+1):"Watch "+n+" fights";
   const played=Object.values(night),tin=played.reduce((s,r)=>s+r.inC,0),tout=played.reduce((s,r)=>s+r.out,0);
@@ -817,10 +812,11 @@ function simulate(n){
 
 renderBal();renderDock();renderCard();requestAnimationFrame(tick);
 // Show the first frame of the fight behind the start button
-// Find fight-01.mp4 … fight-12.mp4 next to the page
+// Find the videos named in the clip maps next to the page
 (function discover(){
   const probes=[];
-  for(let i=1;i<=MAX_VIDEOS;i++){const name=VIDEO_NAME(i);probes.push(new Promise(res=>{const v=document.createElement("video");v.preload="metadata";v.muted=true;
+  const names=[...new Set(C.bouts.flatMap(b=>b.clips.map(c=>c.src)).filter(x=>x!=="*"))];
+  for(const name of names){probes.push(new Promise(res=>{const v=document.createElement("video");v.preload="metadata";v.muted=true;
     const t=setTimeout(()=>done(false),9000);function done(ok){clearTimeout(t);v.removeAttribute("src");v.load();res(ok?{id:name,name,url:name,auto:true,dur:ok}:null)}
     v.onloadedmetadata=()=>done(v.duration||true);v.onerror=()=>done(false);v.src=name;}))}
   Promise.all(probes).then(found=>{
