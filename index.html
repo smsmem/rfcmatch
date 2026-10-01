@@ -1,4 +1,4 @@
-<meta charset="utf-8">
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
 <title>RFC Fight Night</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -621,7 +621,7 @@ const Haptic=(()=>{
 
 /* ============ Start ============ */
 function startRound(){
-  topUp();newRound();const vt=$("vidTag");vt.hidden=false;vt.textContent="Fight "+(BI+1)+" · "+C.bouts[BI].slot;$("openCard").hidden=true;vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
+  topUp();newRound();const vt=$("vidTag");vt.hidden=false;vt.textContent="Fight "+(BI+1);$("openCard").hidden=true;vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
 }
 $("startBtn").onclick=startRound;
 
@@ -831,3 +831,4 @@ renderBal();renderDock();renderCard();requestAnimationFrame(tick);
 })();
 })();
 </script>
+</body></html>
