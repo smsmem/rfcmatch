@@ -1,10 +1,9 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>RFC Fight Harness</title>
+<meta charset="utf-8">
+<title>RFC Fight Night</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-body{margin:0}
 /* Layout: one phone-width column — HUD, 16:9 fight stage, ticket strip, pick dock pinned at the bottom. Test drawer slides over from the right. Single dark "arena" look by choice. */
 :root{
   --bg:#0a0c11; --panel:#131722; --panel2:#1a1f2d; --line:#283044; --fg:#eef1f6; --muted:#8b94a8;
@@ -176,17 +175,52 @@ textarea{min-height:120px;resize:vertical}
 .clip .full .btn{margin-left:auto;padding:4px 8px}
 .note{font-size:12px;color:var(--muted);line-height:1.45}
 .ok{color:var(--win)} .bad{color:var(--loss)}
+/* Fight card (lobby) */
+#app.carding .mid,#app.carding .dock{display:none}
+.fc{flex:1;min-height:0;overflow-y:auto;padding:0 16px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at 50% -10%,rgba(255,61,139,.22) 0%,transparent 55%)}
+.fcHead small{letter-spacing:.18em;text-transform:uppercase;font-size:10px;color:var(--neon);font-weight:700}
+.fcHead h1{margin:2px 0 0;font-family:var(--f-display);font-weight:900;font-size:clamp(34px,10vw,48px);line-height:.95;letter-spacing:.03em;text-transform:uppercase}
+.fcHead p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.35}
+.bout{flex-shrink:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
+.bout.on{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),0 8px 24px rgba(255,61,139,.18)}
+.bTop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.slot{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.bout.main .slot{color:var(--b)}
+.chk{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.bout.on .chk{background:var(--neon);border-color:var(--neon);color:#fff}
+.bRow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px;align-items:start}
+.vs{font-family:var(--f-display);font-weight:900;font-size:24px;color:var(--neon);margin-top:26px}
+.fcF{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;min-width:0}
+.fcF .pic{width:66px;height:78px;object-fit:cover;border-radius:12px;border:2px solid var(--a);margin-bottom:4px;background:var(--panel2);display:grid;place-items:center;font-family:var(--f-display);font-weight:900;font-size:32px}
+.fcF.B .pic{border-color:var(--b)}
+.fcF b{font-family:var(--f-display);font-weight:900;font-size:clamp(16px,4.8vw,22px);line-height:1;text-transform:uppercase;letter-spacing:.02em;overflow-wrap:break-word;hyphens:none}
+.fcF.A b{color:var(--a)} .fcF.B b{color:var(--b)}
+.rec{font-family:var(--f-mono);font-size:13px;font-weight:700}
+.rec em{font-style:normal;font-weight:500;color:var(--muted);font-size:11px;margin-left:4px}
+.meta{font-size:11px;color:var(--muted);line-height:1.3}
+.pay{margin-top:3px;font-family:var(--f-mono);font-weight:700;font-size:15px;padding:3px 10px;border-radius:8px;background:var(--panel2)}
+.fcF.A .pay{color:var(--a)} .fcF.B .pay{color:var(--b)}
+.pay small{display:inline;margin-right:5px;font-family:var(--f-body);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.bRes{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.bRes b{color:var(--fg)}
+.vids{font-size:10px;color:var(--muted);font-family:var(--f-mono)}
+.fcFoot{position:sticky;bottom:0;margin-top:auto;padding:22px 0 calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(10,12,17,0),var(--bg) 20px);display:flex;flex-direction:column;gap:6px}
+.nightTot{display:flex;justify-content:space-between;font-size:13px;padding:0 2px}
+.resBtns{display:flex;flex-direction:column;gap:8px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
-<div id="app">
+<div id="app" class="carding">
   <div class="hud">
     <div class="brand">R<span>F</span>C</div>
     <div class="spacer"></div>
     <div class="bal"><small>Coins</small><b id="bal" class="num">1,000</b></div>
+    <button class="iconbtn" id="openCard" aria-label="Fight card" hidden><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/></svg></button>
     <button class="iconbtn" id="openRules" aria-label="How to play"><span class="q">?</span></button>
     <button class="iconbtn" id="openDrawer" aria-label="Open test settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
+
+  <section class="fc" id="fc" aria-label="Fight card"></section>
 
   <div class="mid">
   <div class="card"><b id="cA">Jarl Halvordsen</b><span>vs</span><b id="cB">Brother Wu</b></div>
@@ -219,7 +253,7 @@ textarea{min-height:120px;resize:vertical}
       <div class="knob" id="knob" tabindex="0" role="slider" aria-label="Pick amount. Slide left or right to pick, push up or down to change the amount"><span class="ar">▲</span><span class="amt" id="amt">10</span><span class="u">Coins</span><span class="ar">▼</span></div>
     </div>
     <div class="hint" id="hint">Slide the knob to a fighter to pick · tap ▲ / ▼ on the knob (or push it up or down) to change the amount</div>
-    <button class="primary" id="startBtn">Start fight</button>
+    <button class="primary" id="startBtn" hidden>Start fight</button>
     <div class="legal">Play with Coins · No purchase necessary · 18+ · Void where prohibited · Results decided by RNG at the start of each fight</div>
   </div>
 </div>
@@ -228,6 +262,7 @@ textarea{min-height:120px;resize:vertical}
 
 <aside class="drawer" id="drawer" aria-label="Test settings">
   <header><b>Test Bench</b><div class="spacer" style="flex:1"></div><button class="btn" id="closeDrawer">Close</button></header>
+  <div class="row" style="padding:8px 16px 0"><label class="fld" style="flex:1"><span>Editing fight</span><select id="boutSel"></select></label></div>
   <div class="tabs" id="tabs">
     <button data-t="math" class="on">Math</button><button data-t="fighters">Fighters</button><button data-t="clips">Clips</button><button data-t="stats">Stats & sim</button>
   </div>
@@ -247,34 +282,66 @@ textarea{min-height:120px;resize:vertical}
 const VIDEO_NAME=i=>"fight-"+String(i).padStart(2,"0")+".mp4", MAX_VIDEOS=12;
 const DEF={
   math:{rtp:.94,step:.01,cap:50,floor:1.05,scale:400,minWin:15,frac:1/3,lastRtp:.65,share:1,lo:1000,hi:3000,lineMin:.3,lineMax:.7,startCoins:1000,refillAt:250},
-  fighters:{A:{name:"Jarl Halvordsen",short:"Jarl",rating:1650,ko:.60,dec:.30,sub:.10},B:{name:"Brother Wu",short:"Brother Wu",rating:1560,ko:.45,dec:.35,sub:.20}},
   force:{winner:"rand",method:"rand",video:"rand"},
   order:"original", fightSec:0, // 0 = use story clip length
   sources:[],
-  clips:[
-    // Shared by every video: walkouts, stare-down and the fight (identical in all current videos up to 0:52)
-    {id:"c1",src:"*",phase:"prelude",tag:"walkouts",side:"-",method:"any",start:0,end:14},
-    {id:"c2",src:"*",phase:"prelude",tag:"stare-down",side:"-",method:"any",start:14,end:18},
-    {id:"c3",src:"*",phase:"story",tag:"touch gloves + clinch",side:"-",method:"any",start:18,end:24.5},
-    {id:"c4",src:"*",phase:"story",tag:"knockdown + get-up",side:"-",method:"any",start:24.5,end:30},
-    {id:"c5",src:"*",phase:"story",tag:"exchange",side:"-",method:"any",start:30,end:36},
-    {id:"c6",src:"*",phase:"story",tag:"reset + circling",side:"-",method:"any",start:36,end:46},
-    {id:"c7",src:"*",phase:"story",tag:"pressure",side:"-",method:"any",start:46,end:52},
-    // Endings differ by video: each video is tied to the winner it shows
-    {id:"e1f",src:"fight-01.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
-    {id:"e1o",src:"fight-01.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
-    {id:"e2f",src:"fight-02.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
-    {id:"e2o",src:"fight-02.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
-    {id:"e3f",src:"fight-03.mp4",phase:"finish",tag:"leg kicks → Jarl down → ref waves it off",side:"B",method:"KO",start:52,end:63},
-    {id:"e3o",src:"fight-03.mp4",phase:"outcome",tag:"hand raise + crowd",side:"B",method:"any",start:63,end:68.8}
+  // Tonight's fight card, in play order. Each fight has its own fighters, videos and clip map.
+  // "*" clips are that fight's shared template; per-video clips carry each video's ending (winner side).
+  bouts:[
+   {id:"jw",slot:"Co-main event",
+    fighters:{A:{name:"Jarl Halvordsen",short:"Jarl",rating:1650,ko:.60,dec:.30,sub:.10,rec:"27-0",note:"26 by KO",ht:"6'8\"",wt:"400 lb",style:"Norse brawling, raw power",img:"jarl"},
+              B:{name:"Brother Wu",short:"Brother Wu",rating:1560,ko:.45,dec:.35,sub:.20,rec:"14-0",note:"9 by KO",ht:"5'8\"",wt:"175 lb",style:"Kung fu, martial arts",img:"wu"}},
+    clips:[
+     // Shared by every video: walkouts, stare-down and the fight (identical in all current videos up to 0:52)
+     {id:"c1",src:"*",phase:"prelude",tag:"walkouts",side:"-",method:"any",start:0,end:14},
+     {id:"c2",src:"*",phase:"prelude",tag:"stare-down",side:"-",method:"any",start:14,end:18},
+     {id:"c3",src:"*",phase:"story",tag:"touch gloves + clinch",side:"-",method:"any",start:18,end:24.5},
+     {id:"c4",src:"*",phase:"story",tag:"knockdown + get-up",side:"-",method:"any",start:24.5,end:30},
+     {id:"c5",src:"*",phase:"story",tag:"exchange",side:"-",method:"any",start:30,end:36},
+     {id:"c6",src:"*",phase:"story",tag:"reset + circling",side:"-",method:"any",start:36,end:46},
+     {id:"c7",src:"*",phase:"story",tag:"pressure",side:"-",method:"any",start:46,end:52},
+     // Endings differ by video: each video is tied to the winner it shows
+     {id:"e1f",src:"fight-01.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
+     {id:"e1o",src:"fight-01.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
+     {id:"e2f",src:"fight-02.mp4",phase:"finish",tag:"clinch → hammer KO",side:"A",method:"KO",start:52,end:60},
+     {id:"e2o",src:"fight-02.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:60,end:68.8},
+     {id:"e3f",src:"fight-03.mp4",phase:"finish",tag:"leg kicks → Jarl down → ref waves it off",side:"B",method:"KO",start:52,end:63},
+     {id:"e3o",src:"fight-03.mp4",phase:"outcome",tag:"hand raise + crowd",side:"B",method:"any",start:63,end:68.8}
+    ]},
+   {id:"dr",slot:"Main event",
+    fighters:{A:{name:"Dmitri Volkov",short:"Dmitri",rating:1700,ko:.55,dec:.15,sub:.30,rec:"19-0",note:"19 by stoppage",ht:"7'1\"",wt:"441 lb",style:"Sambo, wrestling",img:"dmitri"},
+              B:{name:"Ricky Dillon",short:"Ricky",rating:1560,ko:.80,dec:.20,sub:0,rec:"31-2",note:"28 by KO",ht:"5'11\"",wt:"170 lb",style:"Boxing",img:"ricky"}},
+    clips:[
+     // Shared by both videos (identical up to 1:03)
+     {id:"d1",src:"*",phase:"prelude",tag:"walkouts",side:"-",method:"any",start:0,end:13},
+     {id:"d2",src:"*",phase:"prelude",tag:"stare-down + name card",side:"-",method:"any",start:13,end:19},
+     {id:"d3",src:"*",phase:"story",tag:"clinch + first exchange",side:"-",method:"any",start:19,end:30},
+     {id:"d4",src:"*",phase:"story",tag:"trading",side:"-",method:"any",start:30,end:42},
+     {id:"d5",src:"*",phase:"story",tag:"cut + pressure",side:"-",method:"any",start:42,end:52},
+     {id:"d6",src:"*",phase:"story",tag:"slugfest",side:"-",method:"any",start:52,end:63.3},
+     // Endings
+     {id:"d4f",src:"fight-04.mp4",phase:"finish",tag:"bear-hug slam KO",side:"A",method:"KO",start:63.3,end:70},
+     {id:"d4o",src:"fight-04.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"A",method:"any",start:70,end:75},
+     {id:"d5f",src:"fight-05.mp4",phase:"finish",tag:"counter right → Dmitri down",side:"B",method:"KO",start:63.3,end:69.5},
+     {id:"d5o",src:"fight-05.mp4",phase:"outcome",tag:"ref + hand raise + crowd",side:"B",method:"any",start:69.5,end:75}
+    ]}
   ]
 };
 const AMTS=[1,2,5,10,25,50,100,250];
+const PORT={"jarl": "data:image/jpeg;base64,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", "wu": "data:image/jpeg;base64,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", "dmitri": "data:image/jpeg;base64,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", "ricky": "data:image/jpeg;base64,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"};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const esc=v=>String(v).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[ch]);
 let C=clone(DEF);
-try{const s=localStorage.getItem("rfc-harness-v9");if(s){const p=JSON.parse(s);C={...C,...p,force:{...DEF.force,...(p.force||{})},sources:(p.sources||[]).filter(x=>!x.auto&&!String(x.url).startsWith("blob:"))};}}catch(e){}
-function save(){try{const o=clone(C);o.sources=o.sources.filter(s=>!s.auto&&!String(s.url).startsWith("blob:"));localStorage.setItem("rfc-harness-v9",JSON.stringify(o))}catch(e){}}
+const KEY="rfc-match-v12";
+try{const s=localStorage.getItem(KEY);if(s){const p=JSON.parse(s);C={...C,...p,math:{...DEF.math,...(p.math||{})},force:{...DEF.force,...(p.force||{})},sources:(p.sources||[]).filter(x=>!x.auto&&!String(x.url).startsWith("blob:"))};
+  if(!Array.isArray(p.bouts)||p.bouts.length!==DEF.bouts.length||p.bouts.some((b,i)=>b.id!==DEF.bouts[i].id))C.bouts=clone(DEF.bouts);}}catch(e){C=clone(DEF)}
+function save(){try{const o=clone(C);delete o.fighters;delete o.clips;o.sources=o.sources.filter(s=>!s.auto&&!String(s.url).startsWith("blob:"));localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+// The fight being played / edited. C.fighters and C.clips point at that fight's data.
+let BI=0;
+function useBout(i){BI=i;C.fighters=C.bouts[i].fighters;C.clips=C.bouts[i].clips}
+useBout(0);
+// Videos that belong to a fight = videos its clip map names
+function boutVideos(b){const cl=(b||C.bouts[BI]).clips;return C.sources.filter(s=>s.ok!==false&&cl.some(c=>c.src===s.id))}
 
 /* ============ Math ============ */
 const $=id=>document.getElementById(id);
@@ -282,7 +349,7 @@ const fmt=n=>Math.round(n).toLocaleString();
 const f2=n=>(Math.round(n*100)/100).toFixed(2);
 const pct=n=>(n*100).toFixed(1)+"%";
 const mmss=s=>{s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
-function pA(){const M=C.math,a=C.fighters.A.rating,b=C.fighters.B.rating;return 1/(1+Math.pow(10,(b-a)/M.scale))}
+function pA(F){F=F||C.fighters;const M=C.math,a=F.A.rating,b=F.B.rating;return 1/(1+Math.pow(10,(b-a)/M.scale))}
 function flo(x,st){return Math.floor(x/st+1e-9)*st}
 // A video's clips = its own clips for any phase it defines, plus the shared template for the other phases
 function clipsFor(srcId){const own=C.clips.filter(c=>c.src===srcId),tpl=C.clips.filter(c=>c.src==="*");
@@ -339,7 +406,7 @@ function buildPlaylist(res,T,list){
 }
 function newRound(){
   // 1) RNG draws the winner at the start. 2) Pick a video at random among those that end with that winner.
-  const pool=C.sources.filter(s=>s.ok!==false);let res=drawResult(),fight=null;
+  const pool=boutVideos();let res=drawResult(),fight=null;
   const forced=pool.find(s=>s.id===C.force.video);
   if(forced){fight=forced;const vw=videoWinner(forced.id);if(vw&&C.force.winner==="rand")res={w:vw,m:res.m}}
   else{const match=pool.filter(s=>videoWinner(s.id)===res.w);const use=match.length?match:pool;fight=use[Math.floor(Math.random()*use.length)]||null}
@@ -356,15 +423,15 @@ function newRound(){
 }
 
 /* ============ Playback ============ */
-const srcUrl=id=>{if(id==="*")return R&&R.fight?R.fight.url:((C.sources[0]||{}).url||"");const s=C.sources.find(x=>x.id===id);return s?s.url:""};
-const MISSING=["Video not found","Put fight-01.mp4, fight-02.mp4 … next to this page, or add videos under Test Bench → Clips"];
+const srcUrl=id=>{if(id==="*")return R&&R.fight?R.fight.url:(R?"":((boutVideos()[0]||{}).url||""));const s=C.sources.find(x=>x.id===id);return s?s.url:""};
+const MISSING=["Video not found","Put this fight's videos (fight-01.mp4 … fight-05.mp4) next to this page, or add videos under Test Bench → Clips"];
 function playItem(i){
   R.idx=i;R.itemT=0;const it=R.pl[i];
   if(!it){return}
   $("phase").textContent=({prelude:"Walkouts",live:"Live",finish:"Finish",outcome:"Result"})[it.phase];
   $("phase").className="pill"+(it.phase==="live"?" live":"");
   if(it.phase==="finish")banner("Picks closed","Finish sequence");
-  if(it.clip&&vid.error&&vid.dataset.src===srcUrl(it.clip.src)){it.clip=null;it.ph=MISSING}
+  if(it.clip&&(!srcUrl(it.clip.src)||(vid.error&&vid.dataset.src===srcUrl(it.clip.src)))){it.clip=null;it.ph=MISSING}
   if(it.clip){
     $("ph").hidden=true;const url=srcUrl(it.clip.src);
     const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>1.0){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}if(vid.paused)vid.play().catch(()=>{})};
@@ -416,7 +483,7 @@ function renderDock(){
   $("amt").textContent=AMTS[amtIdx];
   const sl=$("slider");const canPick=!!(R&&ws.open&&!R.pending);
   sl.classList.toggle("off",!canPick);
-  if(!R||R.idx<0){$("stW").textContent="Pre-fight";$("stN").textContent="then "+(N-1)+" live windows × "+mmss(len)+(C.sources.length>1?" · "+C.sources.length+" videos, random":"");$("stT").textContent="";$("cdBar").style.transform="scaleX(1)";return}
+  if(!R||R.idx<0){$("stW").textContent="Pre-fight";$("stN").textContent="then "+(N-1)+" live windows × "+mmss(len)+(boutVideos().length>1?" · "+boutVideos().length+" videos, random":"");$("stT").textContent="";$("cdBar").style.transform="scaleX(1)";return}
   if(ws.open){
     $("stW").textContent=ws.k===1?"Pre-fight pick":"Live "+(ws.k-1)+" of "+(N-1);
     const nk=ws.k+1;$("stN").textContent=nk<=N?"Next: "+f2(mult(p,nk,N))+"x / "+f2(mult(1-p,nk,N))+"x":"Last window";
@@ -478,6 +545,7 @@ function showResult(){
     const b=stats.byW[pk.k]||(stats.byW[pk.k]={in:0,fight:0,purse:0});b.in+=pk.coins;b.fight+=pay;b.purse+=bp;
   });
   stats.rounds++;stats.in+=inC;stats.fight+=fight;stats.purse+=purse;
+  night[BI]={w,m:R.res.m,inC,out:fight+purse};$("openCard").hidden=false;
   const el=$("result");
   // Step 1: the knockout result and fight winnings
   el.innerHTML='<div class="step"><h2>'+W+' wins</h2><div class="sub">by '+mName+'</div>'+
@@ -492,12 +560,13 @@ function showResult(){
     
   },2200);
   // Step 3: bonus results and extra Coins made
+  const nxt=queue.length?C.bouts[queue[0]]:null;
   setTimeout(()=>{if(R!==me)return;
     $("st3").innerHTML='<div class="step">'+(br.length?br.join(""):'<div class="rrow mut"><span>No bonus picks (live picks add to the bonus)</span><span></span></div>')+
       '<div class="big"><span>Extra Coins made</span><span class="num '+(purse>0?'win':'mut')+'">+'+f2(purse)+'</span></div>'+
       '<div class="total"><span>Total</span><span class="num">'+f2(fight+purse)+' / '+inC+'</span></div>'+
-      '<button class="primary" id="again">Next fight</button></div>';
-    bal+=purse;renderBal();$("again").onclick=()=>{startRound()};renderStats();
+      '<div class="resBtns">'+(nxt?'<button class="primary" id="again">Next: '+esc(nxt.fighters.A.short)+' vs '+esc(nxt.fighters.B.short)+'</button><button class="btn" id="toCard">Fight card</button>':'<button class="primary" id="again">Back to fight card</button>')+'</div></div>';
+    bal+=purse;renderBal();$("again").onclick=()=>{nxt?nextInQueue():showCard()};if($("toCard"))$("toCard").onclick=()=>{queue=[];showCard()};renderStats();
   },4200);
 }
 
@@ -552,9 +621,48 @@ const Haptic=(()=>{
 
 /* ============ Start ============ */
 function startRound(){
-  topUp();newRound();const vt=$("vidTag");vt.hidden=!R.fight;if(R.fight)vt.textContent=R.fight.name.replace(/\.mp4$/i,"");vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
+  topUp();newRound();const vt=$("vidTag");vt.hidden=false;vt.textContent="Fight "+(BI+1)+" · "+C.bouts[BI].slot;$("openCard").hidden=true;vid.controls=false;vid.muted=false;$("startBtn").hidden=true;$("hint").hidden=false;playItem(0);
 }
 $("startBtn").onclick=startRound;
+
+/* ============ Fight card ============ */
+const METH={KO:"KO/TKO",DEC:"Decision",SUB:"Submission"};
+let queue=[], night={}, discovered=false;
+const sel=new Set(C.bouts.map((b,i)=>i));
+function fcFighter(F,side,m){
+  const pic=F.img&&PORT[F.img]?'<img class="pic" src="'+PORT[F.img]+'" alt="">':'<div class="pic">'+esc((F.short||F.name).slice(0,1))+'</div>';
+  return '<div class="fcF '+side+'">'+pic+'<b>'+esc(F.name)+'</b><span class="rec">'+esc(F.rec||"")+(F.note?'<em>'+esc(F.note)+'</em>':'')+'</span>'+
+    '<span class="meta">'+esc([F.ht,F.wt].filter(Boolean).join(" · "))+'</span><span class="meta">'+esc(F.style||"")+'</span>'+
+    '<span class="pay"><small>Pays</small>'+f2(m)+'x</span></div>'}
+function renderCard(){
+  const cards=C.bouts.map((b,i)=>{const p=pA(b.fighters),on=sel.has(i),r=night[i];
+    const vids=boutVideos(b),wins={A:vids.some(v=>videoWinnerIn(b,v.id)==="A"),B:vids.some(v=>videoWinnerIn(b,v.id)==="B")};
+    const need=[...new Set(b.clips.filter(c=>c.src!=="*").map(c=>c.src))];
+    const vline=discovered?need.map(n=>n.replace(/\.mp4$/i,"")+(vids.some(v=>v.id===n)?" ✓":" missing")).join(" · "):"Checking videos…";
+    return '<div class="bout'+(on?' on':'')+(/main event/i.test(b.slot)&&!/co-/i.test(b.slot)?' main':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-b="'+i+'">'+
+      '<div class="bTop"><span class="slot">Fight '+(i+1)+' · '+esc(b.slot)+'</span><span class="chk">'+(on?'✓ Watching':'+ Add fight')+'</span></div>'+
+      '<div class="bRow">'+fcFighter(b.fighters.A,"A",mult(p,1,1))+'<div class="vs">VS</div>'+fcFighter(b.fighters.B,"B",mult(1-p,1,1))+'</div>'+
+      (r?'<div class="bRes">Last time: <b>'+esc(b.fighters[r.w].name)+'</b> by '+METH[r.m]+' · you played '+fmt(r.inC)+', got back <b>'+f2(r.out)+'</b></div>':'')+
+      '<div class="vids">'+vline+'</div></div>'}).join("");
+  const n=sel.size,only=[...sel][0];
+  const label=n===0?"Choose a fight":n===C.bouts.length&&n>1?(n===2?"Watch both fights":"Watch all "+n+" fights"):n===1?"Watch Fight "+(only+1):"Watch "+n+" fights";
+  const played=Object.values(night),tin=played.reduce((s,r)=>s+r.inC,0),tout=played.reduce((s,r)=>s+r.out,0);
+  $("fc").innerHTML='<div class="fcHead"><small>Tonight · Live from the RFC cage</small><h1>Fight Night</h1><p>Tap a fight to add or remove it. Watch one or both. Pick your fighter during the walkouts, then add live picks as it goes.</p></div>'+cards+
+    '<div class="fcFoot">'+(played.length?'<div class="nightTot"><span class="mut">Tonight so far</span><span class="num">'+fmt(tin)+' played · '+f2(tout)+' back</span></div>':'')+
+    '<button class="primary" id="fcGo"'+(n?'':' disabled')+'>'+label+'</button><div class="hint">Pays = pre-fight multiplier. Live picks pay less once the fight starts.</div></div>';
+  $("fcGo").onclick=()=>{if(!sel.size)return;Haptic.tap(10);queue=[...sel].sort((a,b)=>a-b);nextInQueue()};
+}
+function videoWinnerIn(b,id){const f=b.clips.find(c=>c.src===id&&c.phase==="finish"&&c.side!=="-");return f?f.side:null}
+$("fc").addEventListener("click",e=>{const el=e.target.closest(".bout");if(!el)return;const i=+el.dataset.b;sel.has(i)?sel.delete(i):sel.add(i);Haptic.tap(8);renderCard()});
+$("fc").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("bout")){e.preventDefault();e.target.click()}});
+function showCard(){
+  if(R&&!R.resultShown&&R.idx>=0)return; // never abandon a fight in progress
+  R=null;vid.pause();$("result").hidden=true;$("pp").hidden=true;renderTicket();
+  $("app").classList.add("carding");$("fc").hidden=false;$("openCard").hidden=true;renderCard();$("fc").scrollTop=0}
+function nextInQueue(){
+  const i=queue.shift();if(i==null){showCard();return}
+  useBout(i);$("app").classList.remove("carding");$("fc").hidden=true;$("result").hidden=true;renderDock();startRound()}
+$("openCard").onclick=()=>{queue=[];showCard()};
 
 /* ============ Rules ============ */
 function renderRules(){
@@ -562,6 +670,7 @@ function renderRules(){
   const rows=[];for(let k=1;k<=N;k++)rows.push('<tr><td>'+(k===1?'Pre-fight':'Live '+(k-1)+' ('+mmss((k-2)*len)+'–'+mmss((k-1)*len)+')')+'</td><td>'+f2(mult(p,k,N))+'x</td><td>'+f2(mult(1-p,k,N))+'x</td></tr>');
   $("rulesBody").innerHTML=
    '<h2>How to play<button class="btn" id="closeRules">Close</button></h2>'+
+   '<h3>Fight card</h3><p>Tonight\'s card has '+C.bouts.length+' fights: '+C.bouts.map((b,i)=>'Fight '+(i+1)+' '+esc(b.fighters.A.name)+' vs '+esc(b.fighters.B.name)).join(", ")+'. Tap a fight to add or remove it, then watch one or all of them. They play in card order.</p>'+
    '<p>Pick who wins the fight. The winner is decided by RNG the moment the fight starts, and the fight you watch plays out that result. Nothing on screen during the fight (who looks ahead, damage, knockdowns) tells you who wins.</p>'+
    '<h3>Making a pick</h3><ol>'+
      '<li>Slide the knob <b>left</b> to pick '+esc(A)+' or <b>right</b> to pick '+esc(B)+'.</li>'+
@@ -569,7 +678,7 @@ function renderRules(){
      '<li>Each pick locks in at the multiplier showing when you make it. You can make as many picks as you like, on either fighter.</li></ol>'+
    '<h3>When you can pick</h3>'+
    '<p>The countdown at the bottom shows how long the current window stays open. The pre-fight window runs during the walkouts. Once the fight starts, the multipliers drop and there are '+Nlive+' live windows of '+mmss(len)+' each. Picks close at '+mmss(Nlive*len)+' into the fight, before the finish.</p>'+
-   '<div class="tbl"><table><tr><th>Window</th><th>'+esc(A)+'</th><th>'+esc(B)+'</th></tr>'+rows.join("")+'</table></div>'+
+   '<p class="fine">Multipliers for '+esc(A)+' vs '+esc(B)+':</p><div class="tbl"><table><tr><th>Window</th><th>'+esc(A)+'</th><th>'+esc(B)+'</th></tr>'+rows.join("")+'</table></div>'+
    '<h3>Bonus round</h3><ul>'+
      '<li>Every live pick automatically adds Coins to the bonus round. The pop-up shows how many.</li>'+
      '<li>Call whether the final <b>Purse</b> lands <b>higher</b> or <b>lower</b> than the amount shown. Each button shows what it pays.</li>'+
@@ -589,7 +698,10 @@ $("rules").addEventListener("click",e=>{if(e.target.id==="rules")$("rules").hidd
 document.addEventListener("keydown",e=>{if(e.key==="Escape")$("rules").hidden=true});
 
 /* ============ Test Bench ============ */
-$("openDrawer").onclick=()=>{$("drawer").classList.add("open");renderAllPanes()};
+$("openDrawer").onclick=()=>{$("drawer").classList.add("open");renderBoutSel();renderAllPanes()};
+function renderBoutSel(){const s=$("boutSel");s.innerHTML=C.bouts.map((b,i)=>'<option value="'+i+'">Fight '+(i+1)+': '+esc(b.fighters.A.name)+' vs '+esc(b.fighters.B.name)+'</option>').join("");s.value=BI;
+  s.disabled=!!(R&&R.idx>=0&&!R.resultShown)}
+$("boutSel").onchange=e=>{if(R&&R.idx>=0&&!R.resultShown){e.target.value=BI;return}useBout(+e.target.value);C.force.video="rand";renderAllPanes();renderDock();if(!$("fc").hidden)renderCard()};
 $("closeDrawer").onclick=()=>$("drawer").classList.remove("open");
 $("tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;[...$("tabs").children].forEach(x=>x.classList.toggle("on",x===b));["math","fighters","clips","stats"].forEach(t=>$("pane-"+t).hidden=t!==b.dataset.t)});
 function fld(label,val,attrs){return '<label class="fld"><span>'+label+'</span><input '+attrs+' value="'+esc(val)+'"></label>'}
@@ -619,9 +731,9 @@ function renderMath(){
    '<h3>Force result (testing only)</h3><div class="grid2">'+
    '<label class="fld"><span>Winner</span><select data-f="winner"><option value="rand">RNG</option><option value="A">'+C.fighters.A.name+'</option><option value="B">'+C.fighters.B.name+'</option></select></label>'+
    '<label class="fld"><span>Method</span><select data-f="method"><option value="rand">RNG</option><option value="KO">KO/TKO</option><option value="DEC">Decision</option><option value="SUB">Submission</option></select></label>'+
-   '<label class="fld"><span>Video</span><select data-f="video"><option value="rand">Random ('+C.sources.length+' found)</option>'+C.sources.map(v=>'<option value="'+v.id+'">'+esc(v.name)+'</option>').join("")+'</select></label></div>'+
+   '<label class="fld"><span>Video</span><select data-f="video"><option value="rand">Random ('+boutVideos().length+' found)</option>'+boutVideos().map(v=>'<option value="'+v.id+'">'+esc(v.name)+'</option>').join("")+'</select></label></div>'+
    '<div class="row"><button class="btn" id="resetMath">Reset to sheet values</button><button class="btn" id="resetCoins">Reset Coins</button></div>';
-  $("pane-math").querySelector('[data-f="winner"]').value=C.force.winner;$("pane-math").querySelector('[data-f="method"]').value=C.force.method;$("pane-math").querySelector('[data-f="video"]').value=C.sources.some(v=>v.id===C.force.video)?C.force.video:"rand";
+  $("pane-math").querySelector('[data-f="winner"]').value=C.force.winner;$("pane-math").querySelector('[data-f="method"]').value=C.force.method;$("pane-math").querySelector('[data-f="video"]').value=boutVideos().some(v=>v.id===C.force.video)?C.force.video:"rand";
   $("resetMath").onclick=()=>{C.math=clone(DEF.math);C.fightSec=0;C.order="original";save();renderMath();renderDock()};
   $("resetCoins").onclick=()=>{bal=C.math.startCoins;renderBal()};
 }
@@ -636,12 +748,12 @@ function renderFighters(){
     fld("Name",F.name,'data-s="'+s+'" data-k="name" type="text"')+fld("Slider name",F.short||"",'data-s="'+s+'" data-k="short" type="text"')+fld("Rating",F.rating,'data-s="'+s+'" data-k="rating" type="number"')+
     fld("KO/TKO share",F.ko,'data-s="'+s+'" data-k="ko" type="number" step="0.05"')+fld("Decision share",F.dec,'data-s="'+s+'" data-k="dec" type="number" step="0.05"')+
     fld("Submission share",F.sub,'data-s="'+s+'" data-k="sub" type="number" step="0.05"')+'<div class="fld"><span>Check</span><b class="'+(Math.abs(F.ko+F.dec+F.sub-1)<1e-6?"ok":"bad")+'">'+(Math.abs(F.ko+F.dec+F.sub-1)<1e-6?"Shares = 100%":"Shares must total 100%")+'</b></div></div>'}).join("")+
-    '<div class="note">Ratings come from the model sheet (Jarl Halvordsen 1650, Brother Wu 1560). Changes apply from the next fight.</div>';
+    '<div class="note">Ratings set the win chance (Elo, scale '+C.math.scale+'). Jarl 1650 vs Wu 1560 comes from the model sheet; Dmitri 1700 vs Ricky 1560 is a starting point. Changes apply from the next fight and show on the fight card.</div>';
 }
-$("pane-fighters").addEventListener("change",e=>{const t=e.target;if(!t.dataset.s)return;const F=C.fighters[t.dataset.s];F[t.dataset.k]=(t.dataset.k==="name"||t.dataset.k==="short")?t.value:(parseFloat(t.value)||0);save();renderFighters();renderDock()});
+$("pane-fighters").addEventListener("change",e=>{const t=e.target;if(!t.dataset.s)return;const F=C.fighters[t.dataset.s];F[t.dataset.k]=(t.dataset.k==="name"||t.dataset.k==="short")?t.value:(parseFloat(t.value)||0);save();renderFighters();renderDock();if(!$("fc").hidden)renderCard()});
 
 function renderClips(){
-  const srcOpts='<option value="*">All fights (shared template)</option>'+C.sources.map(s=>'<option value="'+s.id+'">'+esc(s.name)+(s.auto?" (found)":"")+'</option>').join("");
+  const srcOpts='<option value="*">Every video of this fight (shared template)</option>'+C.sources.map(s=>'<option value="'+s.id+'">'+esc(s.name)+(s.auto?" (found)":"")+'</option>').join("");
   const ph=["prelude","story","finish","outcome"];
   $("pane-clips").innerHTML=
    '<div class="note">Clip library: <b>Prelude</b> (walkouts, stare-down) → <b>Story</b> (random events, never tied to the result) → <b>Finish</b> and <b>Outcome</b> (tagged by winner side and method). Add more fight videos and mark clips to build variety. Videos you add stay only for this session; copy the library JSON to keep your clip map.</div>'+
@@ -672,8 +784,8 @@ function renderClips(){
   P.querySelectorAll("[data-play]").forEach(b=>b.onclick=()=>{const c=C.clips[+b.dataset.play];const url=srcUrl(c.src);R=null;$("result").hidden=true;$("ph").hidden=true;if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url}vid.currentTime=c.start;vid.muted=false;vid.play().catch(()=>{});const stop=()=>{if(vid.currentTime>=c.end){vid.pause();vid.removeEventListener("timeupdate",stop)}};vid.addEventListener("timeupdate",stop);$("startBtn").hidden=false});
   P.querySelectorAll("[data-ci]").forEach(inp=>inp.onchange=()=>{const c=C.clips[+inp.dataset.ci];if(inp.dataset.k==="sm"){const[s,m]=inp.value.split("/").map(x=>x.trim());c.side=s||"-";c.method=m||"any"}else c[inp.dataset.k]=parseFloat(inp.value)||0;save()});
   $("copyLib").onclick=()=>{const t=$("libJson");navigator.clipboard.writeText(t.value).then(()=>$("libMsg").textContent="Copied.",()=>{t.select();$("libMsg").textContent="Selected — press copy on your keyboard."})};
-  $("loadLib").onclick=()=>{try{const o=JSON.parse($("libJson").value);if(!Array.isArray(o.clips))throw 0;C.clips=o.clips;(o.sources||[]).forEach(s=>{if(!C.sources.find(x=>x.id===s.id))C.sources.push({id:s.id,name:s.name,url:s.name})});save();renderClips();$("libMsg").textContent="Loaded. Videos referenced by name must sit next to this page or be added again."}catch(e){$("libMsg").textContent="That JSON isn't a clip library. It needs a \"clips\" list."}};
-  $("resetLib").onclick=()=>{C.clips=clone(DEF.clips);C.sources=C.sources.filter(s=>s.auto);save();renderClips()};
+  $("loadLib").onclick=()=>{try{const o=JSON.parse($("libJson").value);if(!Array.isArray(o.clips))throw 0;C.bouts[BI].clips=o.clips;C.clips=o.clips;(o.sources||[]).forEach(s=>{if(!C.sources.find(x=>x.id===s.id))C.sources.push({id:s.id,name:s.name,url:s.name})});save();renderClips();$("libMsg").textContent="Loaded. Videos referenced by name must sit next to this page or be added again."}catch(e){$("libMsg").textContent="That JSON isn't a clip library. It needs a \"clips\" list."}};
+  $("resetLib").onclick=()=>{C.bouts[BI].clips=clone(DEF.bouts[BI].clips);C.clips=C.bouts[BI].clips;C.sources=C.sources.filter(s=>s.auto);save();renderClips()};
 }
 function renderStats(){
   if(!$("pane-stats"))return;
@@ -703,7 +815,7 @@ function simulate(n){
     '<div class="note">Target '+pct(M.rtp)+' × Purse share. Small shortfalls come from rounding multipliers down to '+M.step+'.</div>';
 }
 
-renderBal();renderDock();requestAnimationFrame(tick);
+renderBal();renderDock();renderCard();requestAnimationFrame(tick);
 // Show the first frame of the fight behind the start button
 // Find fight-01.mp4 … fight-12.mp4 next to the page
 (function discover(){
@@ -713,12 +825,9 @@ renderBal();renderDock();requestAnimationFrame(tick);
     v.onloadedmetadata=()=>done(v.duration||true);v.onerror=()=>done(false);v.src=name;}))}
   Promise.all(probes).then(found=>{
     const list=found.filter(Boolean);C.sources=list.concat(C.sources.filter(s=>!s.auto));
-    const first=C.sources[0];
-    if(first){vid.dataset.src=first.url;vid.src=first.url;vid.addEventListener("loadeddata",()=>{if(!R)vid.currentTime=14.5},{once:true});$("stN").textContent=list.length+" fight video"+(list.length===1?"":"s")+" found · picked at random"}
-    else{$("ph").hidden=false;$("phT").textContent=MISSING[0];$("phS").textContent=MISSING[1]}
+    discovered=true;if(!$("fc").hidden)renderCard();
     if($("drawer").classList.contains("open"))renderAllPanes();
   });
 })();
 })();
 </script>
-</html>
