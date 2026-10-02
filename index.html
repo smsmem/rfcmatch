@@ -111,6 +111,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .knob .amt{font-family:var(--f-mono);font-weight:700;font-size:20px;line-height:1}
 .knob .u{font-size:9px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:.7}
 .knob .ar{font-size:9px;line-height:1;opacity:.55}
+.knob .ar{font-size:13px;opacity:.6}
+.knob .grip{width:26px;height:10px;margin:5px 0;border-top:2px solid currentColor;border-bottom:2px solid currentColor;opacity:.35}
+.amtRow{display:flex;justify-content:center;margin-bottom:-4px;pointer-events:none}
+.amtTag{display:flex;align-items:baseline;gap:6px;background:var(--fg);color:var(--bg);border-radius:12px;padding:5px 14px;position:relative;box-shadow:0 4px 14px rgba(0,0,0,.4);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.amtTag::after{content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;margin-left:-5px;background:var(--fg);transform:rotate(45deg)}
+.amtTag small{font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.65}
+.amtTag b{font-size:24px;line-height:1;font-weight:700}
+.amtTag span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.7}
+.amtTag.drag{transition:none}
+.amtTag.bump b{animation:bump .18s ease-out}
+@keyframes bump{50%{transform:scale(1.3)}}
+.amtRow.off{opacity:.45}
 .slider.off{opacity:.45}
 .slider.off .knob{cursor:not-allowed}
 .hint{font-size:11px;color:var(--muted);text-align:center}
@@ -175,6 +187,7 @@ textarea{min-height:120px;resize:vertical}
 .clip .full .btn{margin-left:auto;padding:4px 8px}
 .note{font-size:12px;color:var(--muted);line-height:1.45}
 .ok{color:var(--win)} .bad{color:var(--loss)}
+.snd{position:absolute;left:50%;top:44px;transform:translateX(-50%);z-index:5;border:1px solid var(--neon);background:rgba(10,12,17,.85);color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;animation:pop .22s ease-out}
 /* Fight card (lobby) */
 #app.carding .mid,#app.carding .dock{display:none}
 .fc{flex:1;min-height:0;overflow-y:auto;padding:0 16px;display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at 50% -10%,rgba(255,61,139,.22) 0%,transparent 55%)}
@@ -230,6 +243,7 @@ textarea{min-height:120px;resize:vertical}
     <div class="tag"><span class="pill" id="phase">Ready</span><span class="pill" id="vidTag" hidden></span></div>
     <div class="clock num" id="clock">0:00</div>
     <div class="purse"><label>PURSE</label><div class="bar"><div class="fill" id="pfill"></div></div><div class="ptier" id="ptier">Opens at bell</div></div>
+    <button class="snd" id="snd" hidden>🔇 Tap for sound</button>
     <div class="banner" id="banner" hidden><b id="banT"></b><small id="banS"></small></div>
   </div>
 
@@ -246,13 +260,14 @@ textarea{min-height:120px;resize:vertical}
       <div class="q">Final Purse: higher or lower than <b id="bnLine">2,000</b>?</div>
       <div class="hl" id="ppOpts"><button data-o="H"><b>Higher</b><small id="bnH">pays 0</small></button><button data-o="L"><b>Lower</b><small id="bnL">pays 0</small></button></div>
     </div>
+    <div class="amtRow"><div class="amtTag" id="amtTag"><small>Pick amount</small><b class="num" id="amt">10</b><span>Coins</span></div></div>
     <div class="slider off" id="slider">
       <div class="glowL" id="gL"></div><div class="glowR" id="gR"></div>
       <div class="end l" id="endA"><small>Slide left</small><b id="nA">Jarl</b><span class="m" id="mA">1.49x</span></div>
       <div class="end r" id="endB"><small>Slide right</small><b id="nB">Brother Wu</b><span class="m" id="mB">2.51x</span></div>
-      <div class="knob" id="knob" tabindex="0" role="slider" aria-label="Pick amount. Slide left or right to pick, push up or down to change the amount"><span class="ar">▲</span><span class="amt" id="amt">10</span><span class="u">Coins</span><span class="ar">▼</span></div>
+      <div class="knob" id="knob" tabindex="0" role="slider" aria-label="Pick amount. Slide left or right to pick, push up or down to change the amount"><span class="ar">▲</span><span class="grip" aria-hidden="true"></span><span class="ar">▼</span></div>
     </div>
-    <div class="hint" id="hint">Slide the knob to a fighter to pick · tap ▲ / ▼ on the knob (or push it up or down) to change the amount</div>
+    <div class="hint" id="hint">Slide the knob to a fighter to pick · tap ▲ / ▼ on the knob (or push it up or down) to change the amount shown above it</div>
     <button class="primary" id="startBtn" hidden>Start fight</button>
     <div class="legal">Play with Coins · No purchase necessary · 18+ · Void where prohibited · Results decided by RNG at the start of each fight</div>
   </div>
@@ -432,13 +447,18 @@ function playItem(i){
   if(it.clip&&(!srcUrl(it.clip.src)||(vid.error&&vid.dataset.src===srcUrl(it.clip.src)))){it.clip=null;it.ph=MISSING}
   if(it.clip){
     $("ph").hidden=true;const url=srcUrl(it.clip.src);
-    const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>1.0){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}if(vid.paused)vid.play().catch(()=>{})};
-    if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url;vid.addEventListener("loadedmetadata",go,{once:true});vid.load()}else go();
+    const go=()=>{if(Math.abs(vid.currentTime-it.clip.start)>1.0){R.seeking=true;R.seekAt=performance.now();vid.currentTime=it.clip.start}if(vid.paused)safePlay()};
+    // play() is called right away (inside the tap) so phones and embedded players allow sound
+    if(vid.dataset.src!==url){vid.dataset.src=url;vid.src=url;vid.addEventListener("loadedmetadata",go,{once:true});vid.load();safePlay()}else go();
   }else{
     vid.pause();$("ph").hidden=false;$("phT").textContent=it.ph[0];$("phS").textContent=it.ph[1];R.wall=performance.now();
   }
 }
 vid.addEventListener("seeked",()=>{if(R)R.seeking=false});
+// Sound: if the browser or the page hosting the game blocks sound, keep the fight playing muted and show "Tap for sound".
+function safePlay(){const p=vid.play();if(p&&p.catch)p.catch(err=>{if(err&&err.name==="NotAllowedError"&&!vid.muted){vid.muted=true;$("snd").hidden=false;vid.play().catch(()=>{})}})}
+$("snd").onclick=e=>{e.stopPropagation();vid.muted=false;$("snd").hidden=true;safePlay();Haptic.tap(8)};
+vid.addEventListener("volumechange",()=>{$("snd").hidden=!vid.muted||!R||R.idx<0||R.resultShown});
 vid.addEventListener("error",()=>{if(!R||R.idx<0)return;const it=R.pl[R.idx];if(it&&it.clip){it.clip=null;it.ph=MISSING;playItem(R.idx)}});
 
 function tick(){
@@ -480,7 +500,7 @@ function renderDock(){
   $("mA").textContent=mA?f2(mA)+"x":"—";$("mB").textContent=mB?f2(mB)+"x":"—";
   $("amt").textContent=AMTS[amtIdx];
   const sl=$("slider");const canPick=!!(R&&ws.open&&!R.pending);
-  sl.classList.toggle("off",!canPick);
+  sl.classList.toggle("off",!canPick);$("amtTag").parentNode.classList.toggle("off",!canPick);
   if(!R||R.idx<0){$("stW").textContent="Pre-fight";$("stN").textContent="then "+(N-1)+" live windows × "+mmss(len)+(boutVideos().length>1?" · "+boutVideos().length+" videos, random":"");$("stT").textContent="";$("cdBar").style.transform="scaleX(1)";return}
   if(ws.open){
     $("stW").textContent=ws.k===1?"Pre-fight pick":"Live "+(ws.k-1)+" of "+(N-1);
@@ -587,14 +607,14 @@ const Haptic=(()=>{
 
 /* ============ Slider (Konjo style) ============ */
 (function(){
-  const kn=$("knob"),sl=$("slider");let st=null;
+  const kn=$("knob"),sl=$("slider"),tag=$("amtTag");let st=null;
   const maxX=()=>sl.clientWidth/2-46;
-  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0,zone:0,changed:false,moved:false};kn.setPointerCapture(e.pointerId);kn.classList.add("drag");Haptic.tap(6)});
+  kn.addEventListener("pointerdown",e=>{if(sl.classList.contains("off")&&R&&R.idx>=0)return;st={x:e.clientX,y:e.clientY,mode:null,stepY:e.clientY,dy:0,zone:0,changed:false,moved:false};kn.setPointerCapture(e.pointerId);kn.classList.add("drag");tag.classList.add("drag");Haptic.tap(6)});
   kn.addEventListener("pointermove",e=>{if(!st)return;const dx=e.clientX-st.x,dy=e.clientY-st.y;
     if(!st.mode){if(Math.abs(dy)>5&&Math.abs(dy)>Math.abs(dx)){st.mode="amt";st.armed=true}
       else if(Math.abs(dx)>10)st.mode="side"}
     st.dy=dy;
-    if(st.mode==="side"){if(sl.classList.contains("off"))return;const x=Math.max(-maxX(),Math.min(maxX(),dx));kn.style.transform="translateX("+x+"px)";const r=x/maxX();
+    if(st.mode==="side"){if(sl.classList.contains("off"))return;const x=Math.max(-maxX(),Math.min(maxX(),dx));kn.style.transform="translateX("+x+"px)";tag.style.transform="translateX("+x+"px)";const r=x/maxX();
       $("gL").style.opacity=r<0?Math.min(1,-r):0;$("gR").style.opacity=r>0?Math.min(1,r):0;$("endA").classList.toggle("hot",r<-.65);$("endB").classList.toggle("hot",r>.65);
       const z=r<-.65?-1:r>.65?1:0;if(z!==st.zone){if(z!==0)Haptic.move(14);st.zone=z}}
     if(st.mode==="amt"){
@@ -608,12 +628,12 @@ const Haptic=(()=>{
     if(!st.mode&&Math.abs(dx)<6&&Math.abs(dy)<6&&e.type==="pointerup"){const r=kn.getBoundingClientRect();step(e.clientY<r.top+r.height/2?1:-1,true)}
     else if(st.mode==="amt"&&st.changed)Haptic.tap(10);
     if(st.mode==="side"&&Math.abs(dx)>maxX()*.65)commit(dx<0?"A":"B");
-    st=null;kn.style.transform="";$("gL").style.opacity=0;$("gR").style.opacity=0;$("endA").classList.remove("hot");$("endB").classList.remove("hot")};
+    st=null;kn.style.transform="";tag.style.transform="";tag.classList.remove("drag");$("gL").style.opacity=0;$("gR").style.opacity=0;$("endA").classList.remove("hot");$("endB").classList.remove("hot")};
   kn.addEventListener("pointerup",end);kn.addEventListener("pointercancel",end);
   kn.addEventListener("keydown",e=>{if(e.key==="ArrowUp"){step(1,true);e.preventDefault()}else if(e.key==="ArrowDown"){step(-1,true);e.preventDefault()}else if(e.key==="ArrowLeft"){commit("A");e.preventDefault()}else if(e.key==="ArrowRight"){commit("B");e.preventDefault()}});
   sl.addEventListener("wheel",e=>{e.preventDefault();step(e.deltaY<0?1:-1)},{passive:false});
   function step(d,tap){const was=amtIdx;amtIdx=Math.max(0,Math.min(AMTS.length-1,amtIdx+d));$("amt").textContent=AMTS[amtIdx];
-    if(st)st.changed=st.changed||was!==amtIdx;
+    if(st)st.changed=st.changed||was!==amtIdx;if(was!==amtIdx){tag.classList.remove("bump");void tag.offsetWidth;tag.classList.add("bump")}
     if(tap)Haptic.tap(was!==amtIdx?10:6);else Haptic.move(was!==amtIdx?10:[6,30,6])}
 })();
 
@@ -652,7 +672,7 @@ $("fc").addEventListener("click",e=>{const el=e.target.closest(".bout");if(!el)r
 $("fc").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("bout")){e.preventDefault();e.target.click()}});
 function showCard(){
   if(R&&!R.resultShown&&R.idx>=0)return; // never abandon a fight in progress
-  R=null;vid.pause();$("result").hidden=true;$("pp").hidden=true;renderTicket();
+  R=null;vid.pause();$("result").hidden=true;$("pp").hidden=true;$("snd").hidden=true;renderTicket();
   $("app").classList.add("carding");$("fc").hidden=false;$("openCard").hidden=true;renderCard();$("fc").scrollTop=0}
 function nextInQueue(){
   const i=queue.shift();if(i==null){showCard();return}
